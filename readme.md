@@ -66,7 +66,7 @@ curl -X GET http://localhost:8000/hello/fastapi
 
 ## FastAPI 학습 목차 
 
-- [FastAPI 시작하기](docs/ch01_fastapi_basic.md)
+- [ch01. FastAPI 시작하기](docs/ch01_fastapi_basic.md)
 
 
 
