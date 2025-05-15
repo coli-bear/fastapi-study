@@ -1,4 +1,3 @@
-from chapter.ch01.models import Question
 
 # ch01. FastAPI 기초 다지기
 
@@ -215,17 +214,15 @@ pip install -U alembic
 
 alembic 은 SQLAlchemy 의 마이그레이션 도구로 데이터베이스의 스키마를 관리하는 도구이다. 마이그레이션을 하기 전 먼저 초기화 작업을 해보겠다.
 
-- chapter.ch01 디렉토리로 이동한 후 아래 명령어를 실행한다.
-
 ```shell
 alembic init migrations
-  Creating directory 'FastAPIProject/example/chapter/ch01/migrations' ...  done
-  Creating directory 'FastAPIProject/example/chapter/ch01/migrations/versions' ...  done
-  Generating FastAPIProject/example/chapter/ch01/migrations/script.py.mako ...  done
-  Generating FastAPIProject/example/chapter/ch01/migrations/env.py ...  done
-  Generating FastAPIProject/example/chapter/ch01/migrations/README ...  done
-  Generating FastAPIProject/example/chapter/ch01/alembic.ini ...  done
-  Please edit configuration/connection/logging settings in 'FastAPIProject/example/chapter/ch01/alembic.ini' before proceeding.
+  Creating directory 'FastAPIProject/example/migrations' ...  done
+  Creating directory 'FastAPIProject/example/migrations/versions' ...  done
+  Generating FastAPIProject/example/migrations/script.py.mako ...  done
+  Generating FastAPIProject/example/migrations/env.py ...  done
+  Generating FastAPIProject/example/migrations/README ...  done
+  Generating FastAPIProject/example/alembic.ini ...  done
+  Please edit configuration/connection/logging settings in 'FastAPIProject/example/alembic.ini' before proceeding.
 
 ```
 
@@ -243,7 +240,7 @@ sqlalchemy.url = postgresql://postgres:postgres@localhost:5432/fastapi_db
 이제 alembic 이 참조할 모델을 연결하기 위해 migrations/env.py 파일을 수정하겠다.
 
 ```python
-import chapter.ch01.models as models  # chapter 내부에 경로가 있으므로 chapter.ch01.models 로 import
+import models as models  
 
 ...
 
@@ -266,7 +263,7 @@ INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
 INFO  [alembic.runtime.migration] Will assume transactional DDL.
 INFO  [alembic.autogenerate.compare] Detected added table 'question'
 INFO  [alembic.autogenerate.compare] Detected added table 'answer'
-  Generating FastAPIProject/example/chapter/ch01/migrations/versions/7d109f030d9b_.py ...  done
+  Generating FastAPIProject/example/migrations/versions/7d109f030d9b_.py ...  done
 
 ```
 
@@ -313,13 +310,6 @@ WHERE table_schema = 'public';
 ## Model
 
 alembic 을 이용했으니 이제 모델을 이용해서 데이터를 처리해보도록 하겠다. (파이썬 인터프리터 이용)
-
-> chapter/ch01 디렉토리로 이동한 후 아래 명령어를 실행한다.
-
-```shell
-cd chapter/ch01
-python
-````
 
 ### Insert
 
@@ -497,21 +487,21 @@ def question_list():
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from domain import question_router
+from domain.question import question_router
 
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173"
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
 ]
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+  CORSMiddleware,
+  allow_origins=origins,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
 )
 
 app.include_router(question_router.router)
@@ -712,14 +702,14 @@ class QuestionSchema(BaseModel):
 
 ```python
 
-from domain.question_schema import QuestionSchema  # QuestionSchema import
+from domain.question.question_schema import QuestionSchema  # QuestionSchema import
 
 ...
 
 
 @router.get("/list", response_model=list[QuestionSchema])  # 응답값을 정의하기 위한 Response model 등록 
 def question_list(db: Session = Depends(get_db)):
-    return db.query(Question).order_by(Question.create_date.desc()).all()
+  return db.query(Question).order_by(Question.create_date.desc()).all()
 
 ```
 
@@ -746,13 +736,14 @@ def question_list(db: Session):
 - `domain/question_router.py`
 
 ```python
-import domain.question_crud as question_crud
+import domain.question.question_crud as question_crud
 
 ...
 
+
 @router.get("/list", response_model=list[QuestionSchema])
 def question_list(db: Session = Depends(get_db)):
-    return question_crud.question_list(db=db)
+  return question_crud.question_list(db=db)
 
 ```
 
