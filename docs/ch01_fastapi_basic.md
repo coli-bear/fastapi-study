@@ -341,7 +341,7 @@ db.commit()
 - add() : 세션에 데이터를 추가한다.
 - commit() : 세션에 추가한 데이터를 데이터베이스에 반영한다.
 
-데이터가 정상적으로 반영됐는지 확인하기 위해서 dbms tool 또는 아래와 같은 명령어로 확인한다. 
+데이터가 정상적으로 반영됐는지 확인하기 위해서 dbms tool 또는 아래와 같은 명령어로 확인한다.
 
 ```python
 q.id
@@ -353,37 +353,38 @@ q.id
 
 ```python
 q2 = Question(subject="질문 제목2", content="질문 내용2", create_date=datetime.now())
-q2.id # 결과 없음
+q2.id  # 결과 없음
 db.add(q2)
-q2.id # 결과 없음
+q2.id  # 결과 없음
 db.commit()
-q2.id # 결과 2
+q2.id  # 결과 2
 ```
 
-위 코드에서 알 수 있는 사실은 `audoincrement`는 commit 이 호출되는 시점(Database 반영되는 시점) 에 처리된다는 것을 알 수 있다. 
+위 코드에서 알 수 있는 사실은 `audoincrement`는 commit 이 호출되는 시점(Database 반영되는 시점) 에 처리된다는 것을 알 수 있다.
 
 ### Select
 
 데이저장했으니 이제 데이터를 조회해보자.
 
 ```python
-questions = db.query(Question).all() # ---> (1)
-questions 
+questions = db.query(Question).all()  # ---> (1)
+questions
 # [<models.Question object at 0x106e55940>, <models.Question object at 0x106c87b10>]
-question_1 = db.query(Question).get(1) # ---> (2)
+question_1 = db.query(Question).get(1)  # ---> (2)
 question_1
 # <models.Question object at 0x106e55940>
 ```
 
 - (1) 전체 데이터 조회
-  - db.query(Question) : Question 테이블을 조회한다.
-  - all() : 조회한 데이터를 모두 가져온다.
+    - db.query(Question) : Question 테이블을 조회한다.
+    - all() : 조회한 데이터를 모두 가져온다.
 - (2) 특정 데이터 조회
-  - db.query(Question).get(1) : Question 테이블에서 id 가 1 인 데이터를 조회한다.
-  - get() : 특정 데이터를 조회한다.
-  - 주의 : 여기서 get() 메서드는 SQLAlchemy 현재 학습중인 라이브러리 버전에서는 deprecated 되었다. 이 부분은 SQLAlchemy 학습할때 다시 정리하자.
+    - db.query(Question).get(1) : Question 테이블에서 id 가 1 인 데이터를 조회한다.
+    - get() : 특정 데이터를 조회한다.
+    - 주의 : 여기서 get() 메서드는 SQLAlchemy 현재 학습중인 라이브러리 버전에서는 deprecated 되었다. 이 부분은 SQLAlchemy 학습할때 다시 정리하자.
 
-여기서 원하는 데이터를 필터링해서 조회하고 싶을 때는 아래와 같이 사용하면 된다. 
+여기서 원하는 데이터를 필터링해서 조회하고 싶을 때는 아래와 같이 사용하면 된다.
+
 ```python
 db.query(Question).filter(Question.subject.like('%2%')).all()
 # [<models.Question object at 0x106c87b10>]
@@ -401,7 +402,7 @@ db.commit()
 
 ### Delete
 
-데이터를 삭제해보겠다. 
+데이터를 삭제해보겠다.
 
 ```python
 delete_q = db.query(Question).get(2)
@@ -411,57 +412,59 @@ db.query(Question).all()
 # [<models.Question object at 0x106e55940>]
 ```
 
-데이터가 삭제된 것을 확인할 수 있다. 
+데이터가 삭제된 것을 확인할 수 있다.
 
 ### Relationship Insert, Select
 
-이제 연관관계가 있는 데이터를 입력해서 저장하고조회해보겠다. 
+이제 연관관계가 있는 데이터를 입력해서 저장하고조회해보겠다.
 
 ```python
 q = db.query(Question).first()
 a = Answer(content="답변 내용", create_date=datetime.now(), question=q)
 db.add(a)
 db.commit()
-a.id # 결과 1
-q.answers # 결과 [<models.Answer object at 0x106e57230>]
-a.question # 결과 <models.Question object at 0x106e55940>
+a.id  # 결과 1
+q.answers  # 결과 [<models.Answer object at 0x106e57230>]
+a.question  # 결과 <models.Question object at 0x106e55940>
 ```
 
 Answer 을 생성할 때 Question 을 참조하여 생성하고, commit() 을 하면 Answer 의 id 가 자동으로 증가한다.
+
 - q.answers : Question 모델에서 Answer 모델을 참조할 때 사용된다.
 - a.question : Answer 모델에서 Question 모델을 참조할 때 사용된다.
 
-각 모델에서 서로를 참조하여 조회가 가능하다는 것을 확인했다. 실제 모델을 만들때 Question 모델에는 Answer 모델을 참조하지 않았다. 하지만 실제로는 조회가 가능한데 이는 `backref` 속성을 설정해서 역관계도 참조가 가능하도록 설정이 되어있기 때문이다. 
+각 모델에서 서로를 참조하여 조회가 가능하다는 것을 확인했다. 실제 모델을 만들때 Question 모델에는 Answer 모델을 참조하지 않았다. 하지만 실제로는 조회가 가능한데 이는 `backref` 속성을 설정해서
+역관계도 참조가 가능하도록 설정이 되어있기 때문이다.
 
-## Domain 
+## Domain
 
-Model 을 이용해서 Database 와 연결하고, CRUD 가 정상적으로 동작되는 것을 확인했으니 이제 도메인을 구현해 보겠다. 
+Model 을 이용해서 Database 와 연결하고, CRUD 가 정상적으로 동작되는 것을 확인했으니 이제 도메인을 구현해 보겠다.
 
-이때 구현해야 하는 목록은 다음과 같다. 
+이때 구현해야 하는 목록은 다음과 같다.
 
-- HTTP API : Pydantic 을 이용하여 Response, Request Body 를 정의한다. 
+- HTTP API : Pydantic 을 이용하여 Response, Request Body 를 정의한다.
 - Router : FastAPI 의 Router 를 이용하여 API 를 구현하고, FastAPI 의 main.py 에 등록한다.
 - CRUD: 실제로 데이터를 처리하기 위한 CRUD 을 구현한다.
 
-이떼 FastAPI 의 Depends 를 이용하여 Session 에 대해서 의존성을 주입하여 사용하겠다. 
+이떼 FastAPI 의 Depends 를 이용하여 Session 에 대해서 의존성을 주입하여 사용하겠다.
 
 - DI(Dependency Injection) : 의존성 주입을 이용하여 FastAPI 의 Session 을 주입받아 사용한다.
 
-먼저 Router 를 구현하기 전에 아래 명령어를 통해 백엔드 서버를 구동하자. 
+먼저 Router 를 구현하기 전에 아래 명령어를 통해 백엔드 서버를 구동하자.
 
 ```shell
 uvicorn main:app --reload
 ```
 
-### Router 
+### Router
 
-먼저 Question 을 처리하기 위한 API 를 만들어 보겠다. 
+먼저 Question 을 처리하기 위한 API 를 만들어 보겠다.
 
-모듈을 별도로 구성하지 않고 `domain` 하위에 router 파일을 구성하겠다. 
+모듈을 별도로 구성하지 않고 `domain` 하위에 router 파일을 구성하겠다.
 
 - domain/question_router.py
 
-해당 파일을 생성하고 아래와 같이 코드를 작성하자. 
+해당 파일을 생성하고 아래와 같이 코드를 작성하자.
 
 ```python 
 from fastapi import APIRouter
@@ -481,20 +484,21 @@ def question_list():
 
 ```
 
-- router : FastAPI 의 Router 를 생성한다. 여기서 생성된 라우터를 FastAPI 앱에 등록해야만 라우팅 기능이 동작한다. 
+- router : FastAPI 의 Router 를 생성한다. 여기서 생성된 라우터를 FastAPI 앱에 등록해야만 라우팅 기능이 동작한다.
 - prefix : API 의 prefix 를 설정한다.
-  - 실제 API 요청시 `/question/list` 로 요청이 들어온다.
+    - 실제 API 요청시 `/question/list` 로 요청이 들어온다.
 - @router.get("/list") : GET 방식의 API 를 생성한다.
 
-코드를 살펴보면 `db.close()` 를 통해서 사용한 세션을 커넥션 풀에 반환하고 있다. 세션을 종료하는것으로 오해하지 말자. 
+코드를 살펴보면 `db.close()` 를 통해서 사용한 세션을 커넥션 풀에 반환하고 있다. 세션을 종료하는것으로 오해하지 말자.
 
-이렇게 생성된 router 객체는 FastAPI 앱에 등록해야한다. 아래와 같이 main.py 에 등록하자. 
+이렇게 생성된 router 객체는 FastAPI 앱에 등록해야한다. 아래와 같이 main.py 에 등록하자.
 
 ```python
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from domain import question_router
+
 app = FastAPI()
 
 origins = [
@@ -515,10 +519,10 @@ app.include_router(question_router.router)
 
 - `origins` : 허용할 도메인을 설정한다.
 - `app.add_middleware` : FastAPI 앱에 CORS 미들웨어를 추가한다.
-  - `allow_origins` : 허용할 도메인을 설정한다.
-  - `allow_credentials` : 쿠키를 허용할지 여부를 설정한다.
-  - `allow_methods` : 허용할 HTTP 메서드를 설정한다.
-  - `allow_headers` : 허용할 HTTP 헤더를 설정한다.
+    - `allow_origins` : 허용할 도메인을 설정한다.
+    - `allow_credentials` : 쿠키를 허용할지 여부를 설정한다.
+    - `allow_methods` : 허용할 HTTP 메서드를 설정한다.
+    - `allow_headers` : 허용할 HTTP 헤더를 설정한다.
 - `app.include_router(question_router.router)` : FastAPI 앱에 router 를 등록한다.
 
 이제 서 Question API 가 정상적으로 동작하는지 확인해보자.
@@ -528,7 +532,7 @@ curl -X GET "http://localhost:8000/question/list"
 [{"create_date":"2025-05-15T12:41:22.822039","subject":"질문 제목","content":"질문 내용","id":1}]
 ```
 
-정상적으로 동작하는 것을 확인하였다. 브라우저에서 아래의 URL 로 접근해보자. 
+정상적으로 동작하는 것을 확인하였다. 브라우저에서 아래의 URL 로 접근해보자.
 
 - http://localhost:8000/docs#/
 
@@ -538,12 +542,13 @@ curl -X GET "http://localhost:8000/question/list"
 
 ### DI(Dependency Injection)
 
-FastAPI 에서 제공하는 DI 를 이용해서 데이터베이스 세션의 생성과 반환을 자동화 할 수 있다. 아래 코드를 살펴보자. 
+FastAPI 에서 제공하는 DI 를 이용해서 데이터베이스 세션의 생성과 반환을 자동화 할 수 있다. 아래 코드를 살펴보자.
 
 - database.py
 
 ```python
 import contextlib
+
 
 @contextlib.contextmanager
 def get_db():
@@ -557,7 +562,7 @@ def get_db():
 - `contextlib` : 파이썬 표준 라이브러리로 컨텍스트 매니저를 제공하는 모듈이다.
 - `contextmanager` : 컨텍스트 매니저를 생성하는 데코레이터이다.
 
-이렇게 등록된 get_db 는 with 문과 함께 사용할 수 있다. 
+이렇게 등록된 get_db 는 with 문과 함께 사용할 수 있다.
 
 ```python
 with get_db() as db:
@@ -565,12 +570,12 @@ with get_db() as db:
     pass 
 ```
 
-이제 `question_router`에서 `get_db`를 with 문으로 사용하도록 변경하겠다. 
+이제 `question_router`에서 `get_db`를 with 문으로 사용하도록 변경하겠다.
 
 ```python
 from fastapi import APIRouter
 
-from database import SessionLocal, get_db # get_db 추가
+from database import SessionLocal, get_db  # get_db 추가
 from models import Question
 
 router = APIRouter(prefix="/question")
@@ -578,7 +583,7 @@ router = APIRouter(prefix="/question")
 
 @router.get("/list")
 def question_list():
-    with get_db() as db: # get_db 와 with 문을 이용해서 세션 객체를 자동으로 생성하고 반환한다.
+    with get_db() as db:  # get_db 와 with 문을 이용해서 세션 객체를 자동으로 생성하고 반환한다.
         _question_list = db.query(Question).order_by(Question.create_date.desc()).all()
 
     return _question_list
@@ -586,9 +591,9 @@ def question_list():
 
 이제 `db.close()` 를 호출하지 않아도 세션이 자동으로 종료된다.
 
-이보다 더 효율적으로 사용하는 방법은 FastAPI 에서 제공하는 `Depends`를 사용하는 방법이다. 
+이보다 더 효율적으로 사용하는 방법은 FastAPI 에서 제공하는 `Depends`를 사용하는 방법이다.
 
-아래와 같이 `Depends`를 이용해서 의존성을 주입하도록 변경하였다. 
+아래와 같이 `Depends`를 이용해서 의존성을 주입하도록 변경하였다.
 
 ```python
 from fastapi import APIRouter, Depends
@@ -611,12 +616,14 @@ def question_list(db: Session = Depends(get_db)):
     return db.query(Question).order_by(Question.create_date.desc()).all()
 ```
 
-- `Depends` : FastAPI 에서 제공하는 의존성 주입을 위한 클래스이다.  
+- `Depends` : FastAPI 에서 제공하는 의존성 주입을 위한 클래스이다.
 - `db: Session = Depends(get_db)` : db 파라미터에 get_db() 를 의존성 주입한다.
 
-`Depends`는 매개변수로 전달받은 함수를 호출하여 그 결과를 반환하는 역할을 한다. 여기까지 구현한 코드에서 주의해야할 점은 `@contextlib.contextmanager` 이다. 해당 라이브러리를 사용하면 get_db 의 값이 `contextlib._GeneratorContextManager` 객체를 반환한다. 이렇게 되면 FastAPI 의 종속성 주입이 제대로 동작하지 않을 수 있기 때문에 `get_db`에서 `@contextlib.contextmanager` 를 제거해야 한다. 
+`Depends`는 매개변수로 전달받은 함수를 호출하여 그 결과를 반환하는 역할을 한다. 여기까지 구현한 코드에서 주의해야할 점은 `@contextlib.contextmanager` 이다. 해당 라이브러리를 사용하면
+get_db 의 값이 `contextlib._GeneratorContextManager` 객체를 반환한다. 이렇게 되면 FastAPI 의 종속성 주입이 제대로 동작하지 않을 수 있기 때문에 `get_db`에서
+`@contextlib.contextmanager` 를 제거해야 한다.
 
-`database.py` 의 최종적인 모습은 다음과 같다. 
+`database.py` 의 최종적인 모습은 다음과 같다.
 
 - auto_commit 데코레이터는 나중에 사용하려고 만들어 놓은거니 무시하고 넘어가자. ₩
 
@@ -633,6 +640,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+
 def auto_commit(func):
     def wrapper(*args, **kwargs):
         try:
@@ -647,7 +655,9 @@ def auto_commit(func):
         except Exception as e:
             db.rollback()
             raise e
+
     return wrapper
+
 
 def get_db():
     db = SessionLocal()
@@ -657,3 +667,94 @@ def get_db():
         db.close()
 ```
 
+### Pydentic
+
+지금까지 만든 HTTP 요청을 잘 살펴보자 지금은 `GET /question/list` 요청을 하면 모든 데이터를 조회하도록 구현되어있다. 하지만 실제로는 어떠한가. query parameter, request
+body 등의 입력을 받을 수 있다. 이러한 요청을 처리하기 위한것이 바로 pydantic 이다.
+
+Pydentic 은 FastAPI 에서 제공하는 데이터 검증 및 직렬화 라이브러리로, 데이터 모델을 정의하고 검증하는 데 사용된다.
+
+- 입/출력 항목의 타입과, 개수등을 정의
+- 입/출력 항목의 필수값 체크
+- 입/출력 항목의 검증
+
+아래 명령어를 이용해서 pydantic 을 설치하자.
+
+```shell
+pip install -U pydantic
+```
+
+이제 pydantic 을 이용해서 스키마를 작성해 보자
+
+- domain/question_schema.py
+
+```python
+import datetime
+
+from pydantic import BaseModel
+
+
+class QuestionSchema(BaseModel):
+    id: int
+    subject: str
+    content: str | None = None
+    create_date: datetime.datetime
+```
+
+- `BaseModel` : Pydantic 의 기본 모델 클래스이다.
+- `str | None` : str 타입 또는 None 타입을 허용한다는 의미이다.
+
+> 여기서는 BaseModel 을 상속받은 객체를 스키마라고 표현했다.
+
+이렇게 정의한 스키마는 다음과 같이 router 에 적용하여 사용이 가능하다.
+
+`question_router.py` 에 다음과 같이 추가하였다.
+
+```python
+
+from domain.question_schema import QuestionSchema  # QuestionSchema import
+
+...
+
+
+@router.get("/list", response_model=list[QuestionSchema])  # 응답값을 정의하기 위한 Response model 등록 
+def question_list(db: Session = Depends(get_db)):
+    return db.query(Question).order_by(Question.create_date.desc()).all()
+
+```
+
+- `response_model=list[QuestionSchema]` : 리스트 타입의 QeustionSchema 객체를 응답값으로 정의
+
+### CRUD
+
+router, schema 가 준비가 되었으니 실제 데이터를 컨트롤하기 위한 CRUD 처리 모듈을 구성해 보겠다. 먼저 router 에서 데이터 조회하는 부분을 제거하고 crud를 위한 모듈을 생성하자.
+
+먼저 crud 모듈을 작성하자.
+
+- `domain/question_crud.py`
+
+```python
+from models import Question
+from sqlalchemy.orm import Session
+
+
+def question_list(db: Session):
+    return db.query(Question).order_by(Question.create_date.desct()).all()
+
+```
+
+- `domain/question_router.py`
+
+```python
+import domain.question_crud as question_crud
+
+...
+
+@router.get("/list", response_model=list[QuestionSchema])
+def question_list(db: Session = Depends(get_db)):
+    return question_crud.question_list(db=db)
+
+```
+
+- `import domain.question_crud as question_crud` : question_crud 모듈을 import 한다.
+- `question_crud.question_list(db=db)` : question_crud 모듈의 question_list 함수를 호출한다.
