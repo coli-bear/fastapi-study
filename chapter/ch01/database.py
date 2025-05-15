@@ -25,3 +25,10 @@ def auto_commit(func):
             db.rollback()
             raise e
     return wrapper
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
