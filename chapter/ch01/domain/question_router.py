@@ -3,6 +3,10 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 from models import Question
 
+from domain.question_schema import QuestionSchema
+
+import domain.question_crud as question_crud
+
 router = APIRouter(prefix="/question")
 
 
@@ -13,6 +17,6 @@ router = APIRouter(prefix="/question")
 #
 #     return _question_list
 
-@router.get("/list")
+@router.get("/list", response_model=list[QuestionSchema])
 def question_list(db: Session = Depends(get_db)):
-    return db.query(Question).order_by(Question.create_date.desc()).all()
+    return question_crud.question_list(db=db)
