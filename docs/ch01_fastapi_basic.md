@@ -1,3 +1,5 @@
+from chapter.ch01.models import Question
+
 # ch01. FastAPI 기초 다지기
 
 > 참고 : [wikidocs - FastAPI](https://wikidocs.net/175950)
@@ -289,24 +291,171 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
 INFO  [alembic.runtime.migration] Running upgrade  -> 7d109f030d9b, empty message
 ```
 
-이제 테이블이 정상적으로 생성됐는지 알아보자 
+이제 테이블이 정상적으로 생성됐는지 알아보자
 
 - DBMS 툴을 이용해서 fastapi_db 데이터베이스에 접속한 후 아래 쿼리를 실행해보자.
 
 ```sql
-SELECT * FROM information_schema.tables WHERE table_schema = 'public';
+SELECT *
+FROM information_schema.tables
+WHERE table_schema = 'public';
 ```
 
-|table_catalog|table_schema| table_name      | 
-|-------------|------------|-----------------|
-|fastapi_db  |public      | alembic_version |
-|fastapi_db  |public      | question        |
-|fastapi_db  |public      | answer          |
+| table_catalog | table_schema | table_name      | 
+|---------------|--------------|-----------------|
+| fastapi_db    | public       | alembic_version |
+| fastapi_db    | public       | question        |
+| fastapi_db    | public       | answer          |
 
-위와 같이 테이블이 생성된 것을 알 수 있다 그 중 alembic_version 테이블은 alembic 이 데이터베이스를 변경, 관리하기 위한 테이블로 migrations/versions 에 있는 리비전 파일의 리비전 번호가 저장되어 있다. 
+위와 같이 테이블이 생성된 것을 알 수 있다 그 중 alembic_version 테이블은 alembic 이 데이터베이스를 변경, 관리하기 위한 테이블로 migrations/versions 에 있는 리비전 파일의
+리비전 번호가 저장되어 있다.
 
-## Model 
+## Model
 
-alembic 을 이용했으니 이제 모델을 이용해서 데이터를 처리해보도록 하겠다. 
+alembic 을 이용했으니 이제 모델을 이용해서 데이터를 처리해보도록 하겠다. (파이썬 인터프리터 이용)
 
+> chapter/ch01 디렉토리로 이동한 후 아래 명령어를 실행한다.
 
+```shell
+cd chapter/ch01
+python
+````
+
+### Insert
+
+```python 
+from database import SessionLocal
+from models import Question, Answer
+from datetime import datetime
+
+q = Question(subject="질문 제목", content="질문 내용", create_date=datetime.now())
+
+db = SessionLocal()
+db.add(q)
+db.commit()
+```
+
+코드를 하나씩 살펴보자
+
+- SessionLocal() : database.py 에서 정의한 세션을 생성한다.
+- add() : 세션에 데이터를 추가한다.
+- commit() : 세션에 추가한 데이터를 데이터베이스에 반영한다.
+
+데이터가 정상적으로 반영됐는지 확인하기 위해서 dbms tool 또는 아래와 같은 명령어로 확인한다. 
+
+```python
+q.id
+# 결과 1
+```
+
+모델을 생성할 때 Column 의 인자값으로 `autoincrement` 을 설정하면 자동으로 증가하는 값을 설정할 수 있으며, 기본값은 `autoincrement='auto'` 이다.
+즉, 데이터가 반영될 때마다 primary key 값이 자동으로 증가한다는 것이다.
+
+```python
+q2 = Question(subject="질문 제목2", content="질문 내용2", create_date=datetime.now())
+q2.id # 결과 없음
+db.add(q2)
+q2.id # 결과 없음
+db.commit()
+q2.id # 결과 2
+```
+
+위 코드에서 알 수 있는 사실은 `audoincrement`는 commit 이 호출되는 시점(Database 반영되는 시점) 에 처리된다는 것을 알 수 있다. 
+
+### Select
+
+데이저장했으니 이제 데이터를 조회해보자.
+
+```python
+questions = db.query(Question).all() # ---> (1)
+questions 
+# [<models.Question object at 0x106e55940>, <models.Question object at 0x106c87b10>]
+question_1 = db.query(Question).get(1) # ---> (2)
+question_1
+# <models.Question object at 0x106e55940>
+```
+
+- (1) 전체 데이터 조회
+  - db.query(Question) : Question 테이블을 조회한다.
+  - all() : 조회한 데이터를 모두 가져온다.
+- (2) 특정 데이터 조회
+  - db.query(Question).get(1) : Question 테이블에서 id 가 1 인 데이터를 조회한다.
+  - get() : 특정 데이터를 조회한다.
+  - 주의 : 여기서 get() 메서드는 SQLAlchemy 현재 학습중인 라이브러리 버전에서는 deprecated 되었다. 이 부분은 SQLAlchemy 학습할때 다시 정리하자.
+
+여기서 원하는 데이터를 필터링해서 조회하고 싶을 때는 아래와 같이 사용하면 된다. 
+```python
+db.query(Question).filter(Question.subject.like('%2%')).all()
+# [<models.Question object at 0x106c87b10>]
+```
+
+### Update
+
+데이터 수정은 간단하다. 데이터를 조회하고, 변경하고, commit() 하면 된다.
+
+```python 
+update_q = db.query(Question, 2)
+update_q.subject = "FastAPI Update Subject"
+db.commit()
+```
+
+### Delete
+
+데이터를 삭제해보겠다. 
+
+```python
+delete_q = db.query(Question).get(2)
+db.delete(delete_q)
+db.commit()
+db.query(Question).all()
+# [<models.Question object at 0x106e55940>]
+```
+
+데이터가 삭제된 것을 확인할 수 있다. 
+
+### Relationship Insert, Select
+
+이제 연관관계가 있는 데이터를 입력해서 저장하고조회해보겠다. 
+
+```python
+q = db.query(Question).first()
+a = Answer(content="답변 내용", create_date=datetime.now(), question=q)
+db.add(a)
+db.commit()
+a.id # 결과 1
+q.answers # 결과 [<models.Answer object at 0x106e57230>]
+a.question # 결과 <models.Question object at 0x106e55940>
+```
+
+Answer 을 생성할 때 Question 을 참조하여 생성하고, commit() 을 하면 Answer 의 id 가 자동으로 증가한다.
+- q.answers : Question 모델에서 Answer 모델을 참조할 때 사용된다.
+- a.question : Answer 모델에서 Question 모델을 참조할 때 사용된다.
+
+각 모델에서 서로를 참조하여 조회가 가능하다는 것을 확인했다. 실제 모델을 만들때 Question 모델에는 Answer 모델을 참조하지 않았다. 하지만 실제로는 조회가 가능한데 이는 `backref` 속성을 설정해서 역관계도 참조가 가능하도록 설정이 되어있기 때문이다. 
+
+## Domain 
+
+Model 을 이용해서 Database 와 연결하고, CRUD 가 정상적으로 동작되는 것을 확인했으니 이제 도메인을 구현해 보겠다. 
+
+이때 구현해야 하는 목록은 다음과 같다. 
+
+- HTTP API : Pydantic 을 이용하여 Response, Request Body 를 정의한다. 
+- Router : FastAPI 의 Router 를 이용하여 API 를 구현하고, FastAPI 의 main.py 에 등록한다.
+- CRUD File: 실제로 데이터를 처리하기 위한 CRUD File 을 구현한다.
+
+이떼 FastAPI 의 Depends 를 이용하여 Session 에 대해서 의존성을 주입하여 사용하겠다. 
+
+- DI(Dependency Injection) : 의존성 주입을 이용하여 FastAPI 의 Session 을 주입받아 사용한다.
+
+먼저 Router 를 구현하기 전에 아래 명령어를 통해 백엔드 서버를 구동하자. 
+
+```shell
+uvicorn main:app --reload
+```
+
+### Router 
+
+main.py 에서 Router 를 등록하고, 처리해보자 
+
+```python 
+```
