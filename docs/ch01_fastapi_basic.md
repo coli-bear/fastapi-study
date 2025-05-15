@@ -441,7 +441,7 @@ Model 을 이용해서 Database 와 연결하고, CRUD 가 정상적으로 동�
 
 - HTTP API : Pydantic 을 이용하여 Response, Request Body 를 정의한다. 
 - Router : FastAPI 의 Router 를 이용하여 API 를 구현하고, FastAPI 의 main.py 에 등록한다.
-- CRUD File: 실제로 데이터를 처리하기 위한 CRUD File 을 구현한다.
+- CRUD: 실제로 데이터를 처리하기 위한 CRUD 을 구현한다.
 
 이떼 FastAPI 의 Depends 를 이용하여 Session 에 대해서 의존성을 주입하여 사용하겠다. 
 
@@ -455,7 +455,205 @@ uvicorn main:app --reload
 
 ### Router 
 
-main.py 에서 Router 를 등록하고, 처리해보자 
+먼저 Question 을 처리하기 위한 API 를 만들어 보겠다. 
+
+모듈을 별도로 구성하지 않고 `domain` 하위에 router 파일을 구성하겠다. 
+
+- domain/question_router.py
+
+해당 파일을 생성하고 아래와 같이 코드를 작성하자. 
 
 ```python 
+from fastapi import APIRouter
+
+from database import SessionLocal
+from models import Question
+
+router = APIRouter(prefix="/question")
+
+
+@router.get("/list")
+def question_list():
+    db = SessionLocal()
+    _question_list = db.query(Question).order_by(Question.create_date.desc()).all()
+    db.close()
+    return _question_list
+
 ```
+
+- router : FastAPI 의 Router 를 생성한다. 여기서 생성된 라우터를 FastAPI 앱에 등록해야만 라우팅 기능이 동작한다. 
+- prefix : API 의 prefix 를 설정한다.
+  - 실제 API 요청시 `/question/list` 로 요청이 들어온다.
+- @router.get("/list") : GET 방식의 API 를 생성한다.
+
+코드를 살펴보면 `db.close()` 를 통해서 사용한 세션을 커넥션 풀에 반환하고 있다. 세션을 종료하는것으로 오해하지 말자. 
+
+이렇게 생성된 router 객체는 FastAPI 앱에 등록해야한다. 아래와 같이 main.py 에 등록하자. 
+
+```python
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
+from domain import question_router
+app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(question_router.router)
+```
+
+- `origins` : 허용할 도메인을 설정한다.
+- `app.add_middleware` : FastAPI 앱에 CORS 미들웨어를 추가한다.
+  - `allow_origins` : 허용할 도메인을 설정한다.
+  - `allow_credentials` : 쿠키를 허용할지 여부를 설정한다.
+  - `allow_methods` : 허용할 HTTP 메서드를 설정한다.
+  - `allow_headers` : 허용할 HTTP 헤더를 설정한다.
+- `app.include_router(question_router.router)` : FastAPI 앱에 router 를 등록한다.
+
+이제 서 Question API 가 정상적으로 동작하는지 확인해보자.
+
+```shell
+curl -X GET "http://localhost:8000/question/list"
+[{"create_date":"2025-05-15T12:41:22.822039","subject":"질문 제목","content":"질문 내용","id":1}]
+```
+
+정상적으로 동작하는 것을 확인하였다. 브라우저에서 아래의 URL 로 접근해보자. 
+
+- http://localhost:8000/docs#/
+
+이는 FastAPI 에서 제공하는 Swagger API 문서이다. 여기서 API 요청 테스트가 가능하기도 하니 유용하게 사용할 수 있다.
+
+> 사진은 캡처하지 않았으니 직접 들어가서 확인해 볼 것
+
+### DI(Dependency Injection)
+
+FastAPI 에서 제공하는 DI 를 이용해서 데이터베이스 세션의 생성과 반환을 자동화 할 수 있다. 아래 코드를 살펴보자. 
+
+- database.py
+
+```python
+import contextlib
+
+@contextlib.contextmanager
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+- `contextlib` : 파이썬 표준 라이브러리로 컨텍스트 매니저를 제공하는 모듈이다.
+- `contextmanager` : 컨텍스트 매니저를 생성하는 데코레이터이다.
+
+이렇게 등록된 get_db 는 with 문과 함께 사용할 수 있다. 
+
+```python
+with get_db() as db:
+    # using db session 
+    pass 
+```
+
+이제 `question_router`에서 `get_db`를 with 문으로 사용하도록 변경하겠다. 
+
+```python
+from fastapi import APIRouter
+
+from database import SessionLocal, get_db # get_db 추가
+from models import Question
+
+router = APIRouter(prefix="/question")
+
+
+@router.get("/list")
+def question_list():
+    with get_db() as db: # get_db 와 with 문을 이용해서 세션 객체를 자동으로 생성하고 반환한다.
+        _question_list = db.query(Question).order_by(Question.create_date.desc()).all()
+
+    return _question_list
+```
+
+이제 `db.close()` 를 호출하지 않아도 세션이 자동으로 종료된다.
+
+이보다 더 효율적으로 사용하는 방법은 FastAPI 에서 제공하는 `Depends`를 사용하는 방법이다. 
+
+아래와 같이 `Depends`를 이용해서 의존성을 주입하도록 변경하였다. 
+
+```python
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from database import SessionLocal, get_db
+from models import Question
+
+router = APIRouter(prefix="/question")
+
+
+# @router.get("/list")
+# def question_list():
+#     with get_db() as db:
+#         _question_list = db.query(Question).order_by(Question.create_date.desc()).all()
+#
+#     return _question_list
+
+@router.get("/list")
+def question_list(db: Session = Depends(get_db)):
+    return db.query(Question).order_by(Question.create_date.desc()).all()
+```
+
+- `Depends` : FastAPI 에서 제공하는 의존성 주입을 위한 클래스이다.  
+- `db: Session = Depends(get_db)` : db 파라미터에 get_db() 를 의존성 주입한다.
+
+`Depends`는 매개변수로 전달받은 함수를 호출하여 그 결과를 반환하는 역할을 한다. 여기까지 구현한 코드에서 주의해야할 점은 `@contextlib.contextmanager` 이다. 해당 라이브러리를 사용하면 get_db 의 값이 `contextlib._GeneratorContextManager` 객체를 반환한다. 이렇게 되면 FastAPI 의 종속성 주입이 제대로 동작하지 않을 수 있기 때문에 `get_db`에서 `@contextlib.contextmanager` 를 제거해야 한다. 
+
+`database.py` 의 최종적인 모습은 다음과 같다. 
+
+- auto_commit 데코레이터는 나중에 사용하려고 만들어 놓은거니 무시하고 넘어가자. ₩
+
+```python
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_SOURCE = "postgresql://postgres:postgres@localhost:5432/fastapi_db"
+
+engine = create_engine(DATABASE_SOURCE)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+def auto_commit(func):
+    def wrapper(*args, **kwargs):
+        try:
+            db = kwargs.get('db')
+        except AttributeError:
+            raise AttributeError('You need to define db attribute')
+
+        try:
+            result = func(*args, **kwargs)
+            db.commit()
+            return result
+        except Exception as e:
+            db.rollback()
+            raise e
+    return wrapper
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
