@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 DATABASE_SOURCE = "postgresql://postgres:postgres@localhost:5432/fastapi_db"
 
-engine = create_engine(DATABASE_SOURCE, connect_args={"check_same_thread": False})
+engine = create_engine(DATABASE_SOURCE)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
