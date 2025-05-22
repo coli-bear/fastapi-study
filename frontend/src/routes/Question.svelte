@@ -1,10 +1,11 @@
 <script>
     import {fastapi} from "../lib/api.js";
+    import {link} from "svelte-spa-router"
 
     let question_list = []
 
     function get_question_list() {
-        fastapi('GET', '/question/', {}, (json) => {
+        fastapi('GET', '/api/question/list', {}, (json) => {
             question_list = json
         })
     }
@@ -14,6 +15,6 @@
 
 <ul>
     {#each question_list as question}
-        <li>{question.subject}</li>
+        <li><a use:link href="/question/{question.id}">{question.subject}</a></li>
     {/each}
 </ul>
