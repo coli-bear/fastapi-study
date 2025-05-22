@@ -25,13 +25,18 @@ function _failure_callback(json, failure_callback) {
 }
 
 function _success_callback(json, success_callback) {
-    if (success_callback) {
+    if (!success_callback) {
+        return
+    }
+    if (json) {
         success_callback(json)
+    } else {
+        success_callback()
     }
 }
 
 export const fastapi = (operation, url, params, success_callback, failure_callback) => {
-    let method = operation;
+    let method = operation.toLowerCase();
     let content_type = 'application/json';
     let _url = _generate_url(method, url, params);
     let options = {
@@ -42,9 +47,17 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
         }
     }
 
+    if (method !== 'get') {
+        options['body'] = JSON.stringify(params);
+    }
+
 
     fetch(_url, options)
         .then((response) => {
+            if (response.status === 201) {
+                _success_callback(undefined, success_callback)
+            }
+
             response
                 .json()
                 .then((json) => {
