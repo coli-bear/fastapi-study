@@ -462,7 +462,7 @@ from fastapi import APIRouter
 from database import SessionLocal
 from models import Question
 
-router = APIRouter(prefix="/question")
+router = APIRouter(prefix="/api/question")
 
 
 @router.get("/list")
@@ -591,7 +591,7 @@ from sqlalchemy.orm import Session
 from database import SessionLocal, get_db
 from models import Question
 
-router = APIRouter(prefix="/question")
+router = APIRouter(prefix="/api/question")
 
 
 # @router.get("/list")
