@@ -134,12 +134,12 @@ npm run dev
 Svelte Router 는 화면 이동을 위해서 필요하다. 여기 프로젝트에서는 다음과 같은 화면들이 필요하다.
 
 - 홈 : /
-- 질문 목록 : /#/question/
-- 질문 상세 : /#/question/:id
+- 질문 목록 : /#/question/list
+- 질문 상세 : /#/question/detail/:id
 - 질문 작성 : /#/question/create
 - 질문 수정 : /#/question/update/:id
-- 답변 작성 : /#/question/:id/answer
-- 답변 수정 : /#/question/:id/answer/update/:id
+- 답변 작성 : /#/answer/create
+- 답변 수정 : /#/answer/update/:id
 - 사용자 로그인 : /#/login
 - 사용자 회원가입 : /#/register
 
