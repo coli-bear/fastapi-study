@@ -138,8 +138,8 @@ Svelte Router 는 화면 이동을 위해서 필요하다. 여기 프로젝트�
 - 질문 상세 : /#/question/detail/:id
 - 질문 작성 : /#/question/create
 - 질문 수정 : /#/question/update/:id
-- 답변 작성 : /#/answer/create
-- 답변 수정 : /#/answer/update/:id
+- 답변 작성 : /#/answer/create/:question_id
+- 답변 수정 : /#/answer/update/:question_id
 - 사용자 로그인 : /#/login
 - 사용자 회원가입 : /#/register
 
