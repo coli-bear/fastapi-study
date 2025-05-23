@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from domain.answer.answer_schema import AnswerSchema
 
@@ -11,3 +11,13 @@ class QuestionSchema(BaseModel):
     content: str | None = None
     create_date: datetime.datetime
     answers: list[AnswerSchema] = []
+
+class QuestionCreateSchema(BaseModel):
+    subject: str
+    content: str
+
+    @field_validator('subject', 'content')
+    def not_empty(cls, value: str):
+        if not value or not value.strip():
+            raise ValueError("빈 값은 허용되지 않습니다..")
+        return value
