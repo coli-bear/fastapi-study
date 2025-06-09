@@ -4,7 +4,6 @@ from pydantic import BaseModel, field_validator
 
 from domain.answer.answer_schema import AnswerSchema
 
-
 class QuestionSchema(BaseModel):
     id: int
     subject: str
@@ -21,3 +20,7 @@ class QuestionCreateSchema(BaseModel):
         if not value or not value.strip():
             raise ValueError("빈 값은 허용되지 않습니다..")
         return value
+
+class QuestionListSchema(BaseModel):
+    total: int = 0
+    questions: list[QuestionSchema] = []

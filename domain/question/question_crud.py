@@ -6,8 +6,12 @@ from models import Question
 from sqlalchemy.orm import Session
 
 
-def question_list(db: Session):
-    return db.query(Question).order_by(Question.create_date.desc()).all()
+def question_list(db: Session, skip: int = 0, limit: int = 10):
+    _question_list = db.query(Question).order_by(Question.create_date.desc())
+    return _question_list.count(), \
+        _question_list \
+            .offset(skip) \
+            .limit(limit).all()
 
 
 def question_detail(db: Session, question_id: int):
