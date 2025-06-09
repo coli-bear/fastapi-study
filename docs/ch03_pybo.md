@@ -10,7 +10,7 @@
 
 ### Source Code Commit History
 
-> - [Pybo Navigation Bar Frontend](https://github.com/coli-bear/fastapi-study/commit/bbda526ac50af8ac5a40f308d973695f689fd8cf)
+> - [Pybo Navigation Bar Frontend](https://github.com/coli-bear/fastapi-study/commit/20e3537b28e96e92dc0b1aaee3491eacdd3b7bbc)
 > - [Pybo Navigation Bar Backend](https://github.com/coli-bear/fastapi-study/commit/faa24be551202d9ce35d56bcede772c2aa04292f)
 
 ## Pybo User
@@ -166,3 +166,113 @@ def create_user(db: Session, user: UserCreateSchema):
 
 > 백엔드에 약간의 오류가 있어 아래 커밋이력을 확인해서 router 의 코드를 변경하자
 > - [Pybo User Backend 오류 수정](https://github.com/coli-bear/fastapi-study/commit/89984e3ebc470ae968a757d5f9404d59cd3d9fb1)
+
+### Sign In
+
+사용자 로그인을 위한 API 명세는 다음과 같다. 로그인에서는 OAuth2 인증을 사용할 예정이며 fastapi 의 security 모듈을 사용해서 제공한다.
+
+```http request
+POST http://localhost:8000/api/user/signin
+accept: application/json 
+Content-Type: application/x-www-form-urlencoded
+
+{
+    "grant_type": "password",
+    "username": "username",
+    "password": "1234",
+    "scope": "",
+    "client_id": "string",
+    "client_secret": "string"
+}
+```
+
+로그인 API 는 사용자 등록과는 다르게 패스워드 검증이 필요하다. 이를 위해서 먼저 사용자 정보를 조회하고, 조회된 사용자 정보의 패스워드를 검증해야 한다.
+아래는 로그인 응답 명세이다.
+
+| field        | description        |
+|--------------|--------------------|
+| access_token | 로그인 성공시 발급되는 토큰    |
+| token_type   | 토큰 타입, Bearer 로 고정 |
+| username     | 로그인한 사용자 이름(ID)    |
+
+이렇게 로그인 API 를 이용해서 로그인을 하게 되면 access_token 을 발급하게 되며, 이를 통해 API 호출에 대한 인증을 처리할 수 있다.
+
+- domain/user/user_crud.py
+
+```python
+class UserTokenSchema(BaseModel):
+    access_token: str
+    token_type: str
+    username: str
+```
+
+- domain/user/user_crud.py
+
+```python
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
+```
+
+사용자 로그인 정보를 받는 router 는 fastapi.security 의 OAuth2PasswordRequestForm 을 이용할 예정이며, 토큰 발급/검증을 위해서는 다음과 같은 라이브러리를 설치해야한다
+
+- python-multipart: OAuth2PasswordRequestForm 을 사용하기 위해 필요
+
+```shell
+pip install python-multipart
+Collecting python-multipart
+  Downloading python_multipart-0.0.20-py3-none-any.whl.metadata (1.8 kB)
+Downloading python_multipart-0.0.20-py3-none-any.whl (24 kB)
+Installing collected packages: python-multipart
+Successfully installed python-multipart-0.0.20
+```
+
+- python-jose: JWT 토큰을 발급/검증하기 위해 필요
+
+```shell
+pip install "python-jose[cryptography]"
+Requirement already satisfied: python-jose[cryptography] in ./.venv/lib/python3.13/site-packages (3.5.0)
+Requirement already satisfied: ecdsa!=0.15 in ./.venv/lib/python3.13/site-packages (from python-jose[cryptography]) (0.19.1)
+Requirement already satisfied: rsa!=4.1.1,!=4.4,<5.0,>=4.0 in ./.venv/lib/python3.13/site-packages (from python-jose[cryptography]) (4.9.1)
+Requirement already satisfied: pyasn1>=0.5.0 in ./.venv/lib/python3.13/site-packages (from python-jose[cryptography]) (0.6.1)
+Collecting cryptography>=3.4.0 (from python-jose[cryptography])
+  Downloading cryptography-45.0.3-cp311-abi3-macosx_10_9_universal2.whl.metadata (5.7 kB)
+Collecting cffi>=1.14 (from cryptography>=3.4.0->python-jose[cryptography])
+  Downloading cffi-1.17.1-cp313-cp313-macosx_11_0_arm64.whl.metadata (1.5 kB)
+Collecting pycparser (from cffi>=1.14->cryptography>=3.4.0->python-jose[cryptography])
+  Downloading pycparser-2.22-py3-none-any.whl.metadata (943 bytes)
+Requirement already satisfied: six>=1.9.0 in ./.venv/lib/python3.13/site-packages (from ecdsa!=0.15->python-jose[cryptography]) (1.17.0)
+Downloading cryptography-45.0.3-cp311-abi3-macosx_10_9_universal2.whl (7.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 6.5 MB/s eta 0:00:00
+Downloading cffi-1.17.1-cp313-cp313-macosx_11_0_arm64.whl (178 kB)
+Downloading pycparser-2.22-py3-none-any.whl (117 kB)
+Installing collected packages: pycparser, cffi, cryptography
+Successfully installed cffi-1.17.1 cryptography-45.0.3 pycparser-2.22
+
+```
+
+이제 구현해보자
+
+- domain/user/user_router.py
+
+```python
+@router.post("/signin", response_model=UserTokenSchema)
+def user_signin(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = user_crud.exists_user(db=db, user=form_data.username)
+    password_verified = user_crud.pwd_context.verify(form_data.password, user.password)
+    if not user and not password_verified:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="사용자 이름 또는 비밀번호가 잘못되었습니다.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
+    # JWT 토큰 생성
+    data = {
+        "sub": user.username,
+        "exp": datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    }
+    access_token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+
+    return UserTokenSchema(access_token=access_token, token_type="bearer", username=user.username)
+```
+

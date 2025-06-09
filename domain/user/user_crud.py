@@ -16,3 +16,6 @@ def create_user(db: Session, _user: UserCreateSchema):
 
 def exists_user(db:Session, user: UserCreateSchema):
     return db.query(User).filter(User.username == user.username or User.email == user.email).first()
+
+def get_user_by_username(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()

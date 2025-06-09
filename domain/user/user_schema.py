@@ -21,3 +21,8 @@ class UserCreateSchema(BaseModel):
             raise ValueError("Password and confirm password do not match.")
 
         return value
+
+class UserTokenSchema(BaseModel):
+    access_token: str
+    token_type: str
+    username: str
