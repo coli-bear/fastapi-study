@@ -11,7 +11,7 @@
 ### Source Code Commit History
 
 > - [Pybo Navigation Bar Frontend](https://github.com/coli-bear/fastapi-study/commit/bbda526ac50af8ac5a40f308d973695f689fd8cf)
-> - [Pybo Navigation Bar Backend](https://github.com/coli-bear/fastapi-study/commit/10eff0477f1116de8b79189cf426767bbfad963e)
+> - [Pybo Navigation Bar Backend](https://github.com/coli-bear/fastapi-study/commit/faa24be551202d9ce35d56bcede772c2aa04292f)
 
 ## Pybo User
 
@@ -154,6 +154,7 @@ from models import User
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 @auto_commit
 def create_user(db: Session, user: UserCreateSchema):
     _crypted_password = pwd_context.hash(user.password)
@@ -161,5 +162,7 @@ def create_user(db: Session, user: UserCreateSchema):
     db.add(user)
 ```
 
-이제 router 를 등록해서 API 구현부를 최종적으로 완성하겠다. 이는 위 커밋 이력을 확인하면 된다.
+이제 router 를 등록해서 API 구현부와 UI를 최종적으로 완성하겠다. 이는 위 커밋 이력을 확인하면 된다.
 
+> 백엔드에 약간의 오류가 있어 아래 커밋이력을 확인해서 router 의 코드를 변경하자
+> - [Pybo User Backend 오류 수정](https://github.com/coli-bear/fastapi-study/commit/89984e3ebc470ae968a757d5f9404d59cd3d9fb1)
