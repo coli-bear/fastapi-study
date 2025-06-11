@@ -6,7 +6,7 @@
 
 ## Store
 
-이어서 Store를 구현하겠다. Store 는 로컬 스토리지에 저장되는 데이터를 관리하며, 로그인정보, 페이지 정보등 사용자가 웹 서비스를 사용하는데 필요한 영속적인 데이터를 관리하는데 사용한다. 
+이어서 Store를 구현하겠다. Store 는 로컬 스토리지에 저장되는 데이터를 관리하며, 로그인정보, 페이지 정보등 사용자가 웹 서비스를 사용하는데 필요한 영속적인 데이터를 관리하는데 사용한다.
 
 - frontend/src/lib/store.js
 
@@ -14,7 +14,7 @@
 import {writable} from 'svelte/store'
 
 const persist_storage = (key, initValue) => {
- const storedValueStr = localStorage.getItem(key)
+    const storedValueStr = localStorage.getItem(key)
     const parsed = storedValueStr != null ? JSON.parse(storedValueStr) : initValue;
     const store = writable(parsed);
     store.subscribe((val) => {
@@ -34,7 +34,7 @@ export const is_signed = persist_storage("is_signed", false)
 - username: 로그인한 사용자의 이름을 관리하는 store
 - is_signed: 로그인 상태를 관리하는 store
 
-이제 이를 활용한 화면을 구현해보겠다. 
+이제 이를 활용한 화면을 구현해보겠다.
 
 ## Navigation Bar
 
@@ -43,9 +43,11 @@ export const is_signed = persist_storage("is_signed", false)
 - frontend/src/components/NavigationBar.svelte
 
 ```sveltehtml
+
 <script>
     import {link} from "svelte-spa-router";
     import {page} from "../lib/store.js";
+
     console.log(page)
 </script>
 
@@ -77,18 +79,21 @@ export const is_signed = persist_storage("is_signed", false)
 </nav>
 ```
 
-이제 네비게이션 바와 페이지 이동을 위한 링크를 추가 하자 
+이제 네비게이션 바와 페이지 이동을 위한 링크를 추가 하자
 
-> 아래 코드에 moment.js 를 사용하여 날짜 형식을 처리한다. moment.js 는 날짜와 시간을 다루는 라이브러리로, 다양한 형식으로 날짜를 출력할 수 있다. 여기서는 한국어 로케일을 설정하여 날짜를 한국어로 출력한다. 
+> 아래 코드에 moment.js 를 사용하여 날짜 형식을 처리한다. moment.js 는 날짜와 시간을 다루는 라이브러리로, 다양한 형식으로 날짜를 출력할 수 있다. 여기서는 한국어 로케일을 설정하여 날짜를
+> 한국어로 출력한다.
 
 - frontend/src/routes/Question.svelte
 
 ```sveltehtml
+
 <script>
     import moment from "moment/min/moment-with-locales"
+
     moment.locale('ko')
     import {page} from "../lib/store"
-    
+
     // 네비게이션 바 컴포넌트 임포트
     import Navigation from "../components/Navigation.svelte";
 
@@ -96,7 +101,7 @@ export const is_signed = persist_storage("is_signed", false)
     let size = 10
     let total = 0
     let pages = [];
-    
+
     let question_list = []
 
     $: total_page = Math.ceil(total / size)
@@ -148,7 +153,7 @@ export const is_signed = persist_storage("is_signed", false)
     $: get_question_list($page)
 </script>
 <!-- 네비게이션 바 추가 -->
-<Navigation/> 
+<Navigation/>
 <div class="container my-3">
     <table class="table">
         <thead>
@@ -169,7 +174,7 @@ export const is_signed = persist_storage("is_signed", false)
                     {/if}
                 </td>
                 <!-- 작성일시 포멧 변경 -->
-                <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td> 
+                <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td>
             </tr>
         {/each}
         </tbody>
@@ -205,9 +210,9 @@ export const is_signed = persist_storage("is_signed", false)
 </div>
 ```
 
-위 코드에서 주석되어있는 부분을 참고하여 Question.svelte 파일을 수정 하자. 
+위 코드에서 주석되어있는 부분을 참고하여 Question.svelte 파일을 수정 하자.
 
-> 이 부분을 로그인 구현 후 정리해서 조금 대충 정리 되었다. 
+> 이 부분을 로그인 구현 후 정리해서 조금 대충 정리 되었다.
 
 ## Pybo User
 
@@ -353,7 +358,7 @@ def create_user(db: Session, user: UserCreateSchema):
     db.add(user)
 ```
 
-이제 router 를 등록해서 API 구현부와 UI를 최종적으로 완성하겠다. 
+이제 router 를 등록해서 API 구현부와 UI를 최종적으로 완성하겠다.
 
 ### Sign In
 
@@ -361,7 +366,7 @@ def create_user(db: Session, user: UserCreateSchema):
 
 ```http request
 POST http://localhost:8000/api/user/signin
-accept: application/json 
+accept: application/json
 Content-Type: application/x-www-form-urlencoded
 
 {
@@ -464,13 +469,14 @@ def user_signin(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return UserTokenSchema(access_token=access_token, token_type="bearer", username=user.username)
 ```
 
-이제 사용자 로그인과 로그아웃을 위한 UI 를 구현하겠다. 이때 주의해야할 점이 있는데 로그인요청시 헤더는 `application/x-www-form-urlencoded` 로 요청해야 한다. 이는 OAuth2의 규칙이다. 이에 필요한 패키지를 설치하자.
+이제 사용자 로그인과 로그아웃을 위한 UI 를 구현하겠다. 이때 주의해야할 점이 있는데 로그인요청시 헤더는 `application/x-www-form-urlencoded` 로 요청해야 한다. 이는 OAuth2의
+규칙이다. 이에 필요한 패키지를 설치하자.
 
 ```shell
 npm install qs 
 ```
 
-다음으로 API 요청을 위한 fastapi 함수를 수정하겠다. 
+다음으로 API 요청을 위한 fastapi 함수를 수정하겠다.
 
 - frontend/src/lib/api.js
 
@@ -508,12 +514,12 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
     let method = operation.toLowerCase();
     let _url = _generate_url(method, url, params);
     let options = operation === 'signin' ? signin_options(params) : default_options(method, params);
-    
-    ...
+
+...
 }
 ```
 
-먼저 로그인 요청과 일반 요청을 구분 하기 위해 두 함수를 정의했다. 
+먼저 로그인 요청과 일반 요청을 구분 하기 위해 두 함수를 정의했다.
 
 - signin_options: 로그인 요청을 위한 옵션을 정의
 - default_options: 일반 요청을 위한 옵션을 정의
@@ -523,11 +529,12 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
 - frontend/src/routes/UserSignIn.svelte
 
 ```sveltehtml
+
 <script>
     import {push} from "svelte-spa-router";
     import {fastapi} from "../lib/api.js";
     import Error from "../components/Error.svelte";
-    
+
     let error = {detail: []}
     let signin_username = "";
     let signin_password = "";
@@ -569,12 +576,14 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
 ```
 
 fastapi 첫 인자를 signin 으로 설정했다. 이는 fastapi 함수에서 signin_options 함수를 호출하게 된다.
-이제 로그인 화면에서 로그인을 하면 토큰을 발급받게 되고, 이를 통해 API 호출시 인증을 처리할 수 있다. 
+이제 로그인 화면에서 로그인을 하면 토큰을 발급받게 되고, 이를 통해 API 호출시 인증을 처리할 수 있다.
 
 ## Sign Out
-이제 네비게이션 바에 로그인 상태를 표시하고 로그아웃 기능을 추가하자 
+
+이제 네비게이션 바에 로그인 상태를 표시하고 로그아웃 기능을 추가하자
 
 ```sveltehtml
+
 <script>
     import {link} from "svelte-spa-router";
     import {access_token, is_signed, page, username} from "../lib/store.js";
@@ -622,11 +631,134 @@ fastapi 첫 인자를 signin 으로 설정했다. 이는 fastapi 함수에서 si
 
 주석 부분을 참고하여 코드를 수정하면 된다. 로그인 완료시 네비게이견 바를 수정하여 로그인 상태를 표시하고 로그아웃 기능을 추가했다. 로그아웃시에는 로컬 스토리지에 저장된 로그인 정보를 초기화한다.
 
-## Question/Answer 글쓴이 
+## Question/Answer 글쓴이
 
-질문과 답변 작성한 사람을 저장하기 위해서는 질문과 답변에 사용자 정보를 맵핑해야 할 것이다. 그러면 API 요청시 사용자 정보는 어떻게 가져올까? 기본적으로 RestAPI 에서는 세션에 데이터를 저장하는것이 아닌 별도의 방법으로 관리하게 된다. 여기서는 JWT 토큰의 payload 에서 username 을 가져와 처리할 것이다. 
+질문과 답변 작성한 사람을 저장하기 위해서는 질문과 답변에 사용자 정보를 맵핑해야 할 것이다. 그러면 API 요청시 사용자 정보는 어떻게 가져올까? 기본적으로 RestAPI 에서는 세션에 데이터를 저장하는것이 아닌
+별도의 방법으로 관리하게 된다. 여기서는 JWT 토큰의 payload 에서 username 을 가져와 처리할 것이다.
 
-> 스케일 아웃에 의한 서버간 세션 공유가 불가능 한 경우에는 JWT 토큰을 이용해서 사용자 정보를 관리한다. 더 나아가 보안상의 이유로 주요정보는 별도의 DBMS 또는 Redis 와 같은 인메모리 DBMS 에 저장하고 JWT 토큰에는 사용자 ID 만 저장하는 방법도 있다.
+> 스케일 아웃에 의한 서버간 세션 공유가 불가능 한 경우에는 JWT 토큰을 이용해서 사용자 정보를 관리한다. 더 나아가 보안상의 이유로 주요정보는 별도의 DBMS 또는 Redis 와 같은 인메모리 DBMS 에
+> 저장하고 JWT 토큰에는 사용자 ID 만 저장하는 방법도 있다.
 
+### 사전작업
+
+먼저 SQLite 에서 ORM 사용시 발생하는 문제가 있다. 이를 해결하기 위해 아래와 같이 코드를 수정해주자
+
+> 프로젝트에서는 PostgreSQL 을 사용하기 때문에 문제가 발생하지는 않는다.
+
+- database.py
+
+```python
+from sqlalchemy import MetaData
+
+naming_convention = {
+    "ix": 'ix_%(column_0_label)s',
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "ck_%(table_name)s_%(column_0_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+Base.metadata = MetaData(naming_convention=naming_convention)
+```
+
+위 naming_convention 은 RDBMS 컨벤션으로 주로 위와같이 정의해서 사용한다. sqlalchemy 에서 자동으로 생성된 규칙을 보면 아래와 같이 정의되어 있는것을 확인할 수 있다. 이를 맞추기 위해
+위 코드를 적용하는게 좋아보인다.
+
+- `answer_question_id_fkey` : 답변 테이블에서 질문 테이블을 참조하기 위한 외래키 이름 sqlalchemy 에서 자동으로 생성된 이름이다.
+
+이제 env.py 에서 SQLite 마이그레이션을 위한 설정을 추가하겠다.
+
+- migrations/env.py
+
+```python
+def run_migrations_offline() -> None:
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
+    )
+
+
+def run_migrations_online() -> None:
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+        )
+
+```
+
+위와 같이 render_as_batch=True 를 설정하면 SQLite 에서도 마이그레이션을 적용할 수 있다.
+
+> 참고 : `render_as_batch=True`의 의미 <br/>
+> `Alembic` 에서 사용하는 옵션으로 SQLite 와 같이 일부 제약이 있는 데이터베이스에서 제약조건이 있는 메이그레이션을 가능하게 해주는 설정 <br/>
+> - ALTER TABLE 명령을 직접 실행하지 않고 `배치모드`로 처리하도록 설정하는 옵션
+> - SQLite는 ALTER TABLE 로 컬럼 삭제, 타입 변경, 제약조건 수정 등 직접 가능하지 않음 (스키마 변경 지원 X)
+>
+> 이 옵션을 설정하면 Alembic 은 다음과 같은 방식으로 동작한다.
+> 1. 기존 테이블 내용 백업
+> 2. 새로운 테이블 생성 (변경 사항 반영)
+> 3. 데이터를 새로운 테이블로 복사
+> 4. 기존 테이블 삭제
+> 5. 새로운 테이블의 이름을 원래대로 변경
+>
+> 즉 간접적인 방식으로 우회해서 테이블의 스키마를 변경하게 된다. 이는 SQLite 를 사용하는 프로젝트에서 마이그레이션이 복잡한 경우에 필요하다.
+
+이제 적용해보겠다.
+
+```shell
+alembic revision --autogenerate
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.ddl.postgresql] Detected sequence named 'question_id_seq' as owned by integer column 'question(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'user_id_seq' as owned by integer column 'user(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'answer_id_seq' as owned by integer column 'answer(id)', assuming SERIAL and omitting
+  Generating /Users/geontae/PycharmProjects/FastAPIProject/example/migrations/versions/7e8669dcfeea_.py ...  done
+```
+
+이렇게 생성된 `eb7657820ed0_.py` 리비전 파일을 확인해 보자
+
+```python
+def upgrade() -> None:
+    """Upgrade schema."""
+    # ### commands auto generated by Alembic - please adjust! ###
+    with op.batch_alter_table('user', schema=None) as batch_op:
+        batch_op.drop_constraint('user_email_key', type_='unique')
+        batch_op.drop_constraint('user_username_key', type_='unique')
+        batch_op.create_unique_constraint(batch_op.f('uq_user_email'), ['email'])
+        batch_op.create_unique_constraint(batch_op.f('uq_user_username'), ['username'])
+
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    """Downgrade schema."""
+    # ### commands auto generated by Alembic - please adjust! ###
+    with op.batch_alter_table('user', schema=None) as batch_op:
+        batch_op.drop_constraint(batch_op.f('uq_user_username'), type_='unique')
+        batch_op.drop_constraint(batch_op.f('uq_user_email'), type_='unique')
+        batch_op.create_unique_constraint('user_username_key', ['username'])
+        batch_op.create_unique_constraint('user_email_key', ['email'])
+```
+
+기존에 만들었던 `user_email_key`, `user_username_key` 제약조건을 제거하고, 새로운 제약조건 `uq_user_email`, `uq_user_username` 를 추가하는 것을 확인할 수
+있다.
+
+##### 동작순서
+
+1. 기존 제약조건 제거
+2. 새로운 제약조건 추가
+
+이제 이 리비전 파일을 적용해 보자
+
+```shell
+alembic upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 7f008731ea15 -> 7e8669dcfeea, empty message
+```
 
 
