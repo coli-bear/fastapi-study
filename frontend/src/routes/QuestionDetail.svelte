@@ -4,6 +4,7 @@
     moment.locale('ko')
 
     import {fastapi} from "../lib/api.js";
+    import {is_signed} from "../lib/store.js";
     import Error from "../components/Error.svelte";
 
     export let params = {};
@@ -56,9 +57,13 @@
     <Error error={error}/>
     <form method="post" class="my-3">
         <div class="mb-3">
-            <textarea rows="10" bind:value={content} class="form-control"></textarea>
+            <textarea rows="10"
+                      bind:value={content}
+                      class="form-control"
+                      disabled={$is_signed ? '' : 'disabled'}
+            ></textarea>
         </div>
-        <input type="submit" value="답변 등록" class="btn btn-primary" on:click={post_answer}/>
+        <input type="submit" value="답변 등록" class="btn btn-primary {$is_signed ? '' : 'disabled'}" on:click={post_answer}/>
     </form>
     <button class="btn btn-secondary" on:click="{() => {
         push('/question')

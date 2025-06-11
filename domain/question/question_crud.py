@@ -2,7 +2,7 @@ from datetime import datetime
 
 from database import auto_commit
 from domain.question.question_schema import QuestionCreateSchema
-from models import Question
+from models import Question, User
 from sqlalchemy.orm import Session
 
 
@@ -19,6 +19,9 @@ def question_detail(db: Session, question_id: int):
 
 
 @auto_commit
-def question_create(db: Session, question: QuestionCreateSchema):
-    question = Question(subject=question.subject, content=question.content, create_date=datetime.now())
+def question_create(db: Session, question: QuestionCreateSchema, user: User):
+    question = Question(subject=question.subject,
+                        content=question.content,
+                        create_date=datetime.now(),
+                        user=user)
     db.add(question)

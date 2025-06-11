@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from database import get_db
 
 from domain.question.question_schema import QuestionSchema, QuestionCreateSchema, QuestionListSchema
-
+from domain.user.user_router import get_current_user
+from models import User
 import domain.question.question_crud as question_crud
 
 router = APIRouter(prefix="/api/question")
@@ -26,5 +27,7 @@ def question_detail(question_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/create", status_code=status.HTTP_201_CREATED)
-def question_create(_question: QuestionCreateSchema, db: Session = Depends(get_db)):
-    question_crud.question_create(db=db, question=_question)
+def question_create(_question: QuestionCreateSchema,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    question_crud.question_create(db=db, question=_question, user=user)

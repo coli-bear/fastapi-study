@@ -761,4 +761,276 @@ INFO  [alembic.runtime.migration] Will assume transactional DDL.
 INFO  [alembic.runtime.migration] Running upgrade 7f008731ea15 -> 7e8669dcfeea, empty message
 ```
 
+### 사용자 맵핑
 
+이제 질문과 답변에 사용자 정보를 맵핑하기 위해서 다음과 같이 모델을 수정하겠다.
+
+- models.py
+
+```python
+class Question(Base):
+    __tablename__ = "question"
+
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)  # 추가
+    user = relationship("User", backref="question_users")  # 추가
+
+
+class Answer(Base):
+    __tablename__ = "answer"
+
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)  # 추가
+    user = relationship("User", backref="answer_users")  # 추가
+
+```
+
+이제 리비전 파일을 생성하고 적용하겠다.
+
+- 이를 적용하기 전에 먼저 데이터를 삭제하자. 위에서 ForeignKey 를 nullable=False 로 설정했기 때문에 기존에 데이터가 있는 상태에서 적용하면 오류가 발생한다. 따라서 먼저 데이터를 삭제하고
+  적용해야 한다.
+
+```shell
+alembic revision --autogenerate
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.ddl.postgresql] Detected sequence named 'answer_id_seq' as owned by integer column 'answer(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'user_id_seq' as owned by integer column 'user(id)', assuming SERIAL and omitting
+INFO  [alembic.autogenerate.compare] Detected added column 'answer.user_id'
+INFO  [alembic.autogenerate.compare] Detected added foreign key (user_id)(id) on table answer
+INFO  [alembic.autogenerate.compare] Detected added column 'question.user_id'
+INFO  [alembic.autogenerate.compare] Detected added foreign key (user_id)(id) on table question
+  Generating /Users/geontae/PycharmProjects/FastAPIProject/example/migrations/versions/4347f84829f1_.py ...  done
+
+alembic upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 7e8669dcfeea -> 4347f84829f1, empty message
+```
+
+사용자 정보를 맵핑하기 위한 기본적인 작업을 완료했다 이제 질문과 답변 작성시 글쓴이 정보를 가져와보겠다. 그 절차는 아래와 같다.
+
+1. 프론트엔드에서 로그인 성공 후 액세스토큰을 저장
+2. 백엔드 API 호출시 헤더 정보에 액세스 토큰을 포함하여 요청
+3. 백엔드에서 액세스 토큰을 분석하여 사용자명 취득
+4. 사용자명으로 사용자 조회
+
+이를 처리하기 위한 함수를 작성하겠다.
+
+- domain/user/user_router.py
+
+```python
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/signin")
+
+
+def get_current_user(token: str = Depends(oauth2_scheme),
+                     db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    else:
+        user = user_crud.get_user_by_username(db=db, username=username)
+        if user is None:
+            raise credentials_exception
+        return user
+```
+
+위 코드를 잠시 설명하고 넘어가겠다. 먼저 `OAuth2PasswordBearer` 를 이용해서 토큰을 가져올 수 있다. 이때 tokenUrl 을 설정해줄 수 있다.
+
+- tokenUrl: Swagger UI 에서 Authentication
+
+이제 질문과 답변에 사용자 정보를 맵핑하기 위해 다음과 같이 함수를 수정하자.
+
+- domain/question/question_router.py
+
+```python
+@router.post("/create", status_code=status.HTTP_201_CREATED)
+def question_create(_question: QuestionCreateSchema,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    question_crud.question_create(db=db, question=_question, user=user)
+```
+
+- domain/question/question_crud.py
+
+```python
+@auto_commit
+def question_create(db: Session, question: QuestionCreateSchema, user: User):
+    question = Question(subject=question.subject,
+                        content=question.content,
+                        create_date=datetime.now(),
+                        user=user)
+    db.add(question)
+```
+
+이제 질문 작성시 사용자 정보를 맵핑할 수 있다. 답변도 마찬가지로 처리하면 된다.
+
+- domain/answer/answer_router.py
+
+```python
+@router.post("/create/{question_id}", status_code=status.HTTP_201_CREATED)
+def create_answer(question_id: int,
+                  _answer_create: AnswerCreateSchema,
+                  db: Session = Depends(get_db),
+                  user: User = Depends(get_current_user)):
+    _question = question_crud.question_detail(db, question_id)
+    if not _question:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="질문을 찾을 수 없습니다.")
+    answer_crud.create_answer(db, question=_question, answer=_answer_create, user=user)
+```
+
+- domain/answer/answer_crud.py
+
+```python
+@auto_commit
+def create_answer(db: Session, question: Question,
+                  answer: AnswerCreateSchema,
+                  user: User):
+    db_answer = Answer(question=question,
+                       content=answer.content,
+                       create_date=datetime.now(),
+                       user=user)
+    db.add(db_answer)
+```
+
+이제 구현이 완료되었으니 Swagger UI 를 통해서 API 테스트를 해보자. 로그인(Swagger UI 에서 Authorize에서 로그인) 후 질문 등록 API 를 호출하면 아래와 같이 요청이 나가는것을 확인할
+수 있다.
+
+```http request
+POST /api/question/create
+content-type: application/json
+accept: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJpbG4xMDI3IiwiZXhwIjoxNzQ5NzQwNzUyfQ.yH0v0QkCBKwkGuVKCo8asKDrvuZB-6D1eqUkWypo4ig
+
+{
+  "subject": "string",
+  "content": "string"
+}
+```
+
+Authorization 헤더에 Bearer 토큰이 포함되어 있는 것을 확인할 수 있다. 이 토큰을 통해서 백엔드에서 사용자 정보를 조회하고, 질문 작성시 사용자 정보를 맵핑할 수 있다.
+
+이제 해더에서 인증정보를 제외하고 다시 요청해보자 (Swagger UI 에서 Authorize에서 로그아웃)
+
+아래와 같이 응답 헤더와 응답 바디가 오는것을 확인 가능하다.
+
+- 응답 바디
+
+```http response
+401 Unauthorized
+
+{
+  "detail": "Not authenticated"
+}
+```
+
+- 응답 헤더
+
+```
+ access-control-allow-credentials: true 
+ content-length: 30 
+ content-type: application/json 
+ date: Wed,11 Jun 2025 06:08:15 GMT 
+ server: uvicorn 
+ www-authenticate: Bearer 
+```
+
+www-authenticate 헤더에 Bearer 가 포함되어있어야 한다고 명시하고 있다. 
+
+### 질문/답변 프론트엔드 수정 
+
+이제 질문과 답변에 대한 처리를 하기 위해 프론트엔드 코드를 수정하겠다. 먼저 인증 실패에 대하나 처리를 위해 fastapi 함수 먼저 수정해보겠다.
+
+- frontend/src/lib/api.js
+
+```javascript
+import {access_token, username, is_signed} from "./store.js";
+import {get} from "svelte/store";
+import {push} from "svelte-spa-router";
+```
+
+먼저 로컬 스토리지에서 access_token, username, is_signed 를 가져와서 사용한다. svelte/store 에서 get 함수를 이용해서 스토어 값을 가져올 수 있다.
+
+- frontend/src/lib/api.js
+
+```javascript
+function _is_authentication_error(method, status) {
+    return method !== 'signin' && (status === 401 || status === 403);
+}
+
+function unauthorized_callback() {
+    access_token.set('');
+    username.set('');
+    is_signed.set(false);
+    alert('Authentication error, please sign in again.');
+    push('/signin');
+}
+```
+
+위 두 함수를 추가해서 인증 오류에 대한 체크와 인증 오류에 대한 callback 를 처리하겠다. 다음으로 API 요청시(로그인 API 제외) 토큰을 넘겨줄 수 있도록 `Authorization` 헤더를 추가하겠다.
+
+- frontend/src/lib/api.js
+
+```javascript
+function default_options(method, params, content_type = 'application/json') {
+    ... 
+  
+    const _access_token = get(access_token);
+    if (_access_token) {
+        options.headers['Authorization'] = `Bearer ${_access_token}`;
+    }
+
+    ...
+}
+```
+
+위 default_options 에서 토큰이 있는 경우에 `Authorization` 헤더를 추가하도록 했다. 이제 API 요청시 토큰이 있는 경우에만 헤더에 토큰을 포함하게 된다.
+
+다음으로 인증 실패에 대한 callback 처리를 추가하자 
+
+- frontend/src/lib/api.js
+
+```javascript
+export const fastapi = (operation, url, params, success_callback, failure_callback) => {
+    response
+                .json()
+                .then((json) => {
+                    if (_is_authentication_error(method, response.status)) { // 인증 오류 체크 추가
+                        _failure_callback(json, unauthorized_callback)  // 인증 오류 콜백
+                    } else if (_is_error(response)) {
+                        _failure_callback(json, failure_callback);
+                    } else {
+                        _success_callback(json, success_callback);
+                    }
+                })
+                .catch((error) => {
+                    alert(JSON.stringify(error))
+                })
+        })
+        .catch((error) => {
+            alert(error);
+        }) 
+}
+```
+
+마지막으로 로그아웃 된 경우에는 질문 등록과 답변이 불가능하도록 만들어 보겠다. 
+
+- frontend/src/routes/Question.svelte
+
+```sveltehtml
+
+<script>
+    import {page, is_signed} from "../lib/store"
+</script>
+<a use:link href="/question/create/" class="btn btn-primary {$is_signed ? '' : 'disabled'}">질문 등록하기</a>
+```
+
+is_signed 를 가져와서 해당 값 여부에 따라서 활성화/비활성화 되도록 a 태그의 class 에 `{$is_signed ? '' : 'disabled'}` 를 추가했다. 답변도 마찬가지로 처리하면 된다. 

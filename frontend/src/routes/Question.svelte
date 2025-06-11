@@ -5,7 +5,7 @@
     moment.locale('ko')
 
     import {fastapi} from "../lib/api.js";
-    import {page} from "../lib/store"
+    import {page, is_signed} from "../lib/store"
 
     import Navigation from "../components/Navigation.svelte";
 
@@ -112,5 +112,5 @@
         </li>
     </ul>
     <!-- Pagination End -->
-    <a use:link href="/question/create/" class="btn btn-primary">질문 등록하기</a>
+    <a use:link href="/question/create/" class="btn btn-primary {$is_signed ? '' : 'disabled'}">질문 등록하기</a>
 </div>
