@@ -211,7 +211,7 @@ export const is_signed = persist_storage("is_signed", false)
 
 ## Pybo User
 
-#### User Model
+### User Model
 
 사용자 모델을 다음과 같이 정의하였다.
 
@@ -622,20 +622,11 @@ fastapi 첫 인자를 signin 으로 설정했다. 이는 fastapi 함수에서 si
 
 주석 부분을 참고하여 코드를 수정하면 된다. 로그인 완료시 네비게이견 바를 수정하여 로그인 상태를 표시하고 로그아웃 기능을 추가했다. 로그아웃시에는 로컬 스토리지에 저장된 로그인 정보를 초기화한다.
 
-여기서 Wikidocs 와 조금 다른점이 있다. Wikidocs 는 Home 이 질문 목록을 보여주는 페이지이지만 여기서는 Home 에서 Question 으로 넘어가도록 되어있다. 이때 인증 정보가 있는지, 없는지에 따라 목록으로 이동할지, 로그인 페이지로 이동할지 결정한다.
+## Question/Answer 글쓴이 
 
-- frontend/src/routes/Home.svelte
+질문과 답변 작성한 사람을 저장하기 위해서는 질문과 답변에 사용자 정보를 맵핑해야 할 것이다. 그러면 API 요청시 사용자 정보는 어떻게 가져올까? 기본적으로 RestAPI 에서는 세션에 데이터를 저장하는것이 아닌 별도의 방법으로 관리하게 된다. 여기서는 JWT 토큰의 payload 에서 username 을 가져와 처리할 것이다. 
 
-```sveltehtml
-<script>
-    import {is_signed} from "../lib/store.js";
-</script>
-<h1>Home</h1>
-<h2>Welcome Svelte Application</h2>
-<ul>
-<li><a href="{$is_signed ?'#/question' : '#/signin'}">Go To Question</a></li>
+> 스케일 아웃에 의한 서버간 세션 공유가 불가능 한 경우에는 JWT 토큰을 이용해서 사용자 정보를 관리한다. 더 나아가 보안상의 이유로 주요정보는 별도의 DBMS 또는 Redis 와 같은 인메모리 DBMS 에 저장하고 JWT 토큰에는 사용자 ID 만 저장하는 방법도 있다.
 
-</ul>zof
-```
-이제 Home 페이지에서 로그인 상태에 따라 질문 목록으로 이동하거나 로그인 페이지로 이동하도록 구현했다.
+
 
