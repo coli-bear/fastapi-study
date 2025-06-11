@@ -5,13 +5,15 @@
     import Home from "./routes/Home.svelte";
     import QuestionCreate from "./routes/QuestionCreate.svelte";
     import UserCreate from "./routes/UserCreate.svelte";
+    import UserSignIn from "./routes/UserSignIn.svelte";
 
     const routes = {
         "/": Home,
         '/question': Question,
         '/question/create': QuestionCreate,
         '/question/:question_id': QuestionDetail, // 동적 라우팅
-        '/signup': UserCreate
+        '/signup': UserCreate,
+        '/signin': UserSignIn
     };
     const useHash = false; // true로 설정하면 해시 모드 사용
 </script>

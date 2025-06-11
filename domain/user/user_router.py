@@ -29,8 +29,7 @@ def user_create(_user_create: user_schema.UserCreateSchema, db: Session = Depend
 @router.post("/signin", response_model=UserTokenSchema)
 def user_signin(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = user_crud.get_user_by_username(db=db, username=form_data.username)
-    password_verified = user_crud.pwd_context.verify(form_data.password, user.password)
-    if not user and not password_verified:
+    if not user or not user_crud.pwd_context.verify(form_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="사용자 이름 또는 비밀번호가 잘못되었습니다.",

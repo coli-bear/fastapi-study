@@ -1,7 +1,6 @@
 <script>
     import {link} from "svelte-spa-router";
-    import {page} from "../lib/store.js";
-    console.log(page)
+    import {access_token, is_signed, page, username} from "../lib/store.js";
 </script>
 
 <!-- Navigation bar -->
@@ -20,12 +19,24 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a use:link class="nav-link" href="#/signup">회원가입</a>
-                </li>
-                <li class="nav-item">
-                    <a use:link class="nav-link" href="#/signin">로그인</a>
-                </li>
+                <!-- Navigation Bar Sign In 처리 시작 -->
+                {#if $is_signed}
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signin" on:click={()=>{
+                            $access_token = "";
+                            $username = "";
+                            $is_signed = false;
+                        }}>로그아웃 ({$username})</a>
+                    </li>
+                {:else}
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signup">회원가입</a>
+                    </li>
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signin">로그인</a>
+                    </li>
+                {/if}
+                <!-- Navigation Bar Sign In 처리 끝 -->
             </ul>
         </div>
     </div>

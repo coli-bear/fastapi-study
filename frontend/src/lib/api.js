@@ -1,3 +1,5 @@
+import qs from "qs"
+
 function _generate_url(method, url, params) {
     let _url = `${import.meta.env.VITE_SERVER_URL}${url.startsWith('/') ? url : '/' + url}`;
     if (method.toLowerCase() === 'get' && params && Object.keys(params).length > 0) {
@@ -35,10 +37,7 @@ function _success_callback(json, success_callback) {
     }
 }
 
-export const fastapi = (operation, url, params, success_callback, failure_callback) => {
-    let method = operation.toLowerCase();
-    let content_type = 'application/json';
-    let _url = _generate_url(method, url, params);
+function default_options(method, params, content_type = 'application/json') {
     let options = {
         method: method,
         headers: {
@@ -46,10 +45,27 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
             'Accept': content_type
         }
     }
-
     if (method !== 'get') {
         options['body'] = JSON.stringify(params);
     }
+    return options
+}
+
+function signin_options(params) {
+    return {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        body: qs.stringify(params)
+    }
+}
+
+export const fastapi = (operation, url, params, success_callback, failure_callback) => {
+    let method = operation.toLowerCase();
+    let _url = _generate_url(method, url, params);
+    let options = method === 'signin' ? signin_options(params) : default_options(method, params)
 
 
     fetch(_url, options)

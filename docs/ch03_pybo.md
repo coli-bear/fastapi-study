@@ -4,21 +4,212 @@
 
 여기서는 기본적인 내용은 커밋 이력을 확인하고, 주요한 내용만 정리하겠다.
 
+## Store
+
+이어서 Store를 구현하겠다. Store 는 로컬 스토리지에 저장되는 데이터를 관리하며, 로그인정보, 페이지 정보등 사용자가 웹 서비스를 사용하는데 필요한 영속적인 데이터를 관리하는데 사용한다. 
+
+- frontend/src/lib/store.js
+
+```javascript
+import {writable} from 'svelte/store'
+
+const persist_storage = (key, initValue) => {
+ const storedValueStr = localStorage.getItem(key)
+    const parsed = storedValueStr != null ? JSON.parse(storedValueStr) : initValue;
+    const store = writable(parsed);
+    store.subscribe((val) => {
+        localStorage.setItem(key, JSON.stringify(val))
+    })
+    return store
+}
+
+export const page = persist_storage("page", 0)
+export const access_token = persist_storage("access_token", "")
+export const username = persist_storage("username", "")
+export const is_signed = persist_storage("is_signed", false)
+```
+
+- page: 현재 페이지 정보를 관리하는 store
+- access_token: 로그인 시 발급받은 토큰을 관리하는 store
+- username: 로그인한 사용자의 이름을 관리하는 store
+- is_signed: 로그인 상태를 관리하는 store
+
+이제 이를 활용한 화면을 구현해보겠다. 
+
 ## Navigation Bar
 
-따로 정리하지 않으며, 아래 변경 이력을 확인
+파이보 서비스의 네비게이션 바를 구현하겠다. 여기서는 Svelte SPA Router 를 사용하여 페이지 이동을 처리한다.
 
-### Source Code Commit History
+- frontend/src/components/NavigationBar.svelte
 
-> - [Pybo Navigation Bar Frontend](https://github.com/coli-bear/fastapi-study/commit/20e3537b28e96e92dc0b1aaee3491eacdd3b7bbc)
-> - [Pybo Navigation Bar Backend](https://github.com/coli-bear/fastapi-study/commit/faa24be551202d9ce35d56bcede772c2aa04292f)
+```sveltehtml
+<script>
+    import {link} from "svelte-spa-router";
+    import {page} from "../lib/store.js";
+    console.log(page)
+</script>
+
+<!-- Navigation bar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <div class="container-fluid">
+        <a use:link class="navbar-brand" href="/question" on:click="{() => {$page = 0}}">Pybo</a>
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"/>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a use:link class="nav-link" href="#/signup">회원가입</a>
+                </li>
+                <li class="nav-item">
+                    <a use:link class="nav-link" href="#/signin">로그인</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+```
+
+이제 네비게이션 바와 페이지 이동을 위한 링크를 추가 하자 
+
+> 아래 코드에 moment.js 를 사용하여 날짜 형식을 처리한다. moment.js 는 날짜와 시간을 다루는 라이브러리로, 다양한 형식으로 날짜를 출력할 수 있다. 여기서는 한국어 로케일을 설정하여 날짜를 한국어로 출력한다. 
+
+- frontend/src/routes/Question.svelte
+
+```sveltehtml
+<script>
+    import moment from "moment/min/moment-with-locales"
+    moment.locale('ko')
+    import {page} from "../lib/store"
+    
+    // 네비게이션 바 컴포넌트 임포트
+    import Navigation from "../components/Navigation.svelte";
+
+    // 페이징 처리를 위한 변수 선언
+    let size = 10
+    let total = 0
+    let pages = [];
+    
+    let question_list = []
+
+    $: total_page = Math.ceil(total / size)
+
+    // 페이지 번호 범위 총 10개 표시를 위한 함수 추가 
+    function get_pagination_range(page_number = 0, size = 10, total = 0) {
+        if (total === 0) return [];
+        let _total_page = Math.ceil(total / size)
+        const visiblePages = 10;
+
+        // 0-based page index를 1-based 페이지 번호로 변환
+        const currentPage = page_number + 1;
+
+        let start = currentPage - Math.floor(visiblePages / 2);
+        let end = currentPage + Math.floor(visiblePages / 2) - 1;
+
+        if (start < 1) {
+            start = 1;
+            end = Math.min(visiblePages, _total_page);
+        }
+
+        if (end > _total_page) {
+            end = _total_page;
+            start = Math.max(1, _total_page - visiblePages + 1);
+        }
+
+        const range = [];
+        for (let i = start; i <= end; i++) {
+            range.push(i);
+        }
+
+        return range;
+    }
+
+    // 페이지 번호에 해당하는 질문 목록을 가져오는 함수 수정
+    function get_question_list(_page) {
+        let params = {
+            page: _page,
+            size: size
+        }
+        fastapi('GET', '/api/question/list', params, (json) => {
+            total = json.total
+            question_list = json.questions
+            $page = _page
+            pages = get_pagination_range($page, size, total)
+        })
+    }
+
+    $: get_question_list($page)
+</script>
+<!-- 네비게이션 바 추가 -->
+<Navigation/> 
+<div class="container my-3">
+    <table class="table">
+        <thead>
+        <tr class="table-dark">
+            <th>번호</th>
+            <th>제목</th>
+            <th>작성일시</th>
+        </tr>
+        </thead>
+        <tbody>
+        {#each question_list as question, i}
+            <tr>
+                <td>{ total - ($page * size) - i }</td>
+                <td>
+                    <a use:link href="/question/{question.id}">{question.subject}</a>
+                    {#if question.answers.length > 0 }
+                        <span class="text-danger small mx-2">{question.answers.length}</span>
+                    {/if}
+                </td>
+                <!-- 작성일시 포멧 변경 -->
+                <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td> 
+            </tr>
+        {/each}
+        </tbody>
+    </table>
+    <!-- Pagination Start -->
+    <ul class="pagination justify-content-center">
+        <li class="page-item">
+            <!-- Previous Button -->
+            <button class="page-link" on:click="{() => get_question_list( 0)}">처음</button>
+        </li>
+        <li class="page-item {$page <= 0 && 'disabled'}">
+            <!-- Previous Button -->
+            <button class="page-link" on:click="{() => get_question_list( $page-1)}">이전</button>
+        </li>
+
+        <!-- Page Number Display -->
+        {#each pages as p}
+            <li class="page-item {p - 1 === $page && 'active'}">
+                <button on:click={() => get_question_list(p - 1)} class="page-link">{p}</button>
+            </li>
+        {/each}
+        <!-- Next Button -->
+        <li class="page-item {$page >= total_page -1  && 'disabled'}">
+            <button class="page-link" on:click="{() => get_question_list($page+1)}">다음</button>
+        </li>
+        <li class="page-item">
+            <!-- Previous Button -->
+            <button class="page-link" on:click="{() => get_question_list( total_page -1)}">마지막</button>
+        </li>
+    </ul>
+    <!-- Pagination End -->
+    <a use:link href="/question/create/" class="btn btn-primary">질문 등록하기</a>
+</div>
+```
+
+위 코드에서 주석되어있는 부분을 참고하여 Question.svelte 파일을 수정 하자. 
+
+> 이 부분을 로그인 구현 후 정리해서 조금 대충 정리 되었다. 
 
 ## Pybo User
-
-### Source Code Commit History
-
-> - [Pybo User Frontend]()
-> - [Pybo User Backend]()
 
 #### User Model
 
@@ -162,10 +353,7 @@ def create_user(db: Session, user: UserCreateSchema):
     db.add(user)
 ```
 
-이제 router 를 등록해서 API 구현부와 UI를 최종적으로 완성하겠다. 이는 위 커밋 이력을 확인하면 된다.
-
-> 백엔드에 약간의 오류가 있어 아래 커밋이력을 확인해서 router 의 코드를 변경하자
-> - [Pybo User Backend 오류 수정](https://github.com/coli-bear/fastapi-study/commit/89984e3ebc470ae968a757d5f9404d59cd3d9fb1)
+이제 router 를 등록해서 API 구현부와 UI를 최종적으로 완성하겠다. 
 
 ### Sign In
 
@@ -275,4 +463,179 @@ def user_signin(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
     return UserTokenSchema(access_token=access_token, token_type="bearer", username=user.username)
 ```
+
+이제 사용자 로그인과 로그아웃을 위한 UI 를 구현하겠다. 이때 주의해야할 점이 있는데 로그인요청시 헤더는 `application/x-www-form-urlencoded` 로 요청해야 한다. 이는 OAuth2의 규칙이다. 이에 필요한 패키지를 설치하자.
+
+```shell
+npm install qs 
+```
+
+다음으로 API 요청을 위한 fastapi 함수를 수정하겠다. 
+
+- frontend/src/lib/api.js
+
+```javascript
+import qs from "qs"
+
+...
+
+function default_options(method, params, content_type = 'application/json') {
+    let options = {
+        method: method,
+        headers: {
+            'Content-Type': content_type,
+            'Accept': content_type
+        }
+    }
+    if (method !== 'get') {
+        options['body'] = JSON.stringify(params);
+    }
+    return options
+}
+
+function signin_options(params) {
+    return {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        body: qs.stringify(params)
+    }
+}
+
+export const fastapi = (operation, url, params, success_callback, failure_callback) => {
+    let method = operation.toLowerCase();
+    let _url = _generate_url(method, url, params);
+    let options = operation === 'signin' ? signin_options(params) : default_options(method, params);
+    
+    ...
+}
+```
+
+먼저 로그인 요청과 일반 요청을 구분 하기 위해 두 함수를 정의했다. 
+
+- signin_options: 로그인 요청을 위한 옵션을 정의
+- default_options: 일반 요청을 위한 옵션을 정의
+
+이제 로그인 화면을 구현 해보자
+
+- frontend/src/routes/UserSignIn.svelte
+
+```sveltehtml
+<script>
+    import {push} from "svelte-spa-router";
+    import {fastapi} from "../lib/api.js";
+    import Error from "../components/Error.svelte";
+    
+    let error = {detail: []}
+    let signin_username = "";
+    let signin_password = "";
+
+    function sign_error(json) {
+        error = json;
+    }
+
+    function signin_success_callback(json) {
+        push("/question")
+    }
+
+    function signin(event) {
+        event.preventDefault()
+        let url = "/api/user/signin"
+        let params = {
+            username: signin_username,
+            password: signin_password
+        }
+        fastapi('signin', url, params, signin_success_callback, sign_error)
+    }
+</script>
+
+<div class="container">
+    <h5 class="my-3 border-bottom pb-2">Sign In</h5>
+    <Error error={error}/>
+    <form method="post">
+        <div class="mb-3">
+            <label for="username">username</label>
+            <input type="text" class="form-control" id="username" bind:value="{signin_username}">
+        </div>
+        <div class="mb-3">
+            <label for="password">password</label>
+            <input type="password" class="form-control" id="password" bind:value="{signin_password}">
+        </div>
+        <button type="submit" class="btn btn-primary" on:click="{signin}">Sign In</button>
+    </form>
+</div>
+```
+
+fastapi 첫 인자를 signin 으로 설정했다. 이는 fastapi 함수에서 signin_options 함수를 호출하게 된다.
+이제 로그인 화면에서 로그인을 하면 토큰을 발급받게 되고, 이를 통해 API 호출시 인증을 처리할 수 있다. 
+
+## Sign Out
+이제 네비게이션 바에 로그인 상태를 표시하고 로그아웃 기능을 추가하자 
+
+```sveltehtml
+<script>
+    import {link} from "svelte-spa-router";
+    import {access_token, is_signed, page, username} from "../lib/store.js";
+</script>
+
+<!-- Navigation bar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+    <div class="container-fluid">
+        <a use:link class="navbar-brand" href="/question" on:click="{() => {$page = 0}}">Pybo</a>
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"/>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <!-- Navigation Bar Sign In 처리 시작 -->
+                {#if $is_signed}
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signin" on:click={()=>{
+                            $access_token = "";
+                            $username = "";
+                            $is_signed = false;
+                        }}>로그아웃 ({$username})</a>
+                    </li>
+                {:else}
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signup">회원가입</a>
+                    </li>
+                    <li class="nav-item">
+                        <a use:link class="nav-link" href="#/signin">로그인</a>
+                    </li>
+                {/if}
+                <!-- Navigation Bar Sign In 처리 끝 -->
+            </ul>
+        </div>
+    </div>
+</nav>
+```
+
+주석 부분을 참고하여 코드를 수정하면 된다. 로그인 완료시 네비게이견 바를 수정하여 로그인 상태를 표시하고 로그아웃 기능을 추가했다. 로그아웃시에는 로컬 스토리지에 저장된 로그인 정보를 초기화한다.
+
+여기서 Wikidocs 와 조금 다른점이 있다. Wikidocs 는 Home 이 질문 목록을 보여주는 페이지이지만 여기서는 Home 에서 Question 으로 넘어가도록 되어있다. 이때 인증 정보가 있는지, 없는지에 따라 목록으로 이동할지, 로그인 페이지로 이동할지 결정한다.
+
+- frontend/src/routes/Home.svelte
+
+```sveltehtml
+<script>
+    import {is_signed} from "../lib/store.js";
+</script>
+<h1>Home</h1>
+<h2>Welcome Svelte Application</h2>
+<ul>
+<li><a href="{$is_signed ?'#/question' : '#/signin'}">Go To Question</a></li>
+
+</ul>zof
+```
+이제 Home 페이지에서 로그인 상태에 따라 질문 목록으로 이동하거나 로그인 페이지로 이동하도록 구현했다.
 
