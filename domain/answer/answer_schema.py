@@ -1,6 +1,8 @@
 from datetime import datetime
 from pydantic import BaseModel, field_validator
 
+from domain.user.user_schema import UserSchema
+
 
 class AnswerCreateSchema(BaseModel):
     content: str
@@ -16,3 +18,4 @@ class AnswerSchema(BaseModel):
     id: int
     content: str
     create_date: datetime
+    user: UserSchema | None

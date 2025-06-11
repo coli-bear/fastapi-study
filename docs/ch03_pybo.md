@@ -1033,4 +1033,147 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
 <a use:link href="/question/create/" class="btn btn-primary {$is_signed ? '' : 'disabled'}">질문 등록하기</a>
 ```
 
-is_signed 를 가져와서 해당 값 여부에 따라서 활성화/비활성화 되도록 a 태그의 class 에 `{$is_signed ? '' : 'disabled'}` 를 추가했다. 답변도 마찬가지로 처리하면 된다. 
+is_signed 를 가져와서 해당 값 여부에 따라서 활성화/비활성화 되도록 a 태그의 class 에 `{$is_signed ? '' : 'disabled'}` 를 추가했다. 답변도 마찬가지로 처리하면 된다.
+
+### 질문/답변 작성자 표시
+
+이제 질문과 답변 작성자를 표시해보자. 먼저 응답에 대한 Schema 를 수정하겠다. 
+
+- domain/user/user_schema.py
+
+```python
+class UserSchema(BaseModel):
+    id: int
+    username: str
+    email: str
+```
+
+먼자 사용자 정보를 표시해 줄 UserSchema 를 정의했다. 이제 질문과 답변에 사용자 정보를 포함시키겠다.
+
+- domain/question/question_schema.py
+
+```python
+class QuestionSchema(BaseModel):
+    id: int
+    subject: str
+    content: str | None = None
+    create_date: datetime.datetime
+    answers: list[AnswerSchema] = []
+    user: UserSchema | None
+
+```
+- domain/answer/answer_schema.py
+
+```python
+class AnswerSchema(BaseModel):
+    id: int
+    content: str
+    create_date: datetime
+    user: UserSchema | None
+```
+
+이제 화면에 글쓴이에 대한 정보를 표시하도록 하자 
+
+- frontend/src/routes/Question.svelte
+
+```sveltehtml
+    ...
+
+    <table class="table">
+        <thead>
+        <tr class="text-center table-dark">
+            <th>번호</th>
+            <!-- th style 적용 -->
+            <th style="width: 50%">제목</th>
+            <!-- 글쓴이 추가 -->
+            <th>글쓴이</th>
+            <th>작성일시</th>
+        </tr>
+        </thead>
+        <tbody>
+        {#each question_list as question, i}
+            <!-- tr 클래스에 text-center 추가 -->
+            <tr class="text-center">
+                <td>{ total - ($page * size) - i }</td>
+                <!-- td class="text-start" 추가 -->
+                <td class="text-start">
+                    <a use:link href="/question/{question.id}">{question.subject}</a>
+                    {#if question.answers.length > 0 }
+                        <span class="text-danger small mx-2">{question.answers.length}</span>
+                    {/if}
+                </td>
+                <!-- 글쓴이 추가 -->
+                <td>{question.user ? question.user.username : ""}</td> 
+                <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td>
+            </tr>
+        {/each}
+        </tbody>
+    </table>
+
+    ...
+```
+
+주석 부분을 참고하여 코드를 추가하면 된다 다음은 상세 화면에서 글쓴이를 표시하겠다.
+
+- frontend/src/routes/QuestionDetail.svelte
+
+```sveltehtml
+    ...
+
+    <h2 class="border-bottom py-2">{question_detail.subject}</h2>
+    <div class="card my-3">
+        <div class="card-body">
+            <div class="card-text" style="white-space: pre-line;">{question_detail.content}</div>
+            <div class="d-flex justify-content-end">
+                <!-- 글쓴이 추가 시작 -->
+                <div class="badge bg-light text-dark p-2 text-start">
+                    <div class="mb-2">{ question_detail.user ? question_detail.user.username : ""}</div>
+                    <div>{moment(question_detail.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
+                </div>
+                <!-- 글쓴이 추가 종료 -->
+            </div>
+        </div>
+    </div>
+
+    <Error error={error}/>
+    <form method="post" class="my-3">
+        <div class="mb-3">
+            <textarea rows="10"
+                      bind:value={content}
+                      class="form-control"
+                      disabled={$is_signed ? '' : 'disabled'}
+            ></textarea>
+        </div>
+        <input type="submit" value="답변 등록" class="btn btn-primary {$is_signed ? '' : 'disabled'}"
+               on:click={post_answer}/>
+    </form>
+    <button class="btn btn-secondary" on:click="{() => {
+        push('/question')
+    }}">목록으로</button>
+    <h5 class="border-bottom my-3 py-2">{question_detail.answers.length}개의 답변이 있습니다.</h5>
+    {#each question_detail.answers as answer}
+        <div class="card my-3">
+            <div class="card-body">
+                <div class="card-text" style="white-space: pre-line;">{answer.content}</div>
+                <div class="d-flex justify-content-end">
+                    <!-- 글쓴이 추가 시작-->
+                    <div class="badge bg-light text-dark p-2 text-start">
+                        <div class="mb-2">{ answer.user ? answer.user.username : ""}</div>
+                        <div>{moment(answer.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
+                    </div>
+                    <!-- 글쓴이 추가 종료-->
+                </div>
+            </div>
+        </div>
+    {/each}
+
+
+    ...
+
+```
+
+주석 부분을 참고하여 코드를 추가하면 된다. 이제 질문과 답변 작성자를 표시할 수 있다.
+
+### 개시물 수정과 삭제 
+
+

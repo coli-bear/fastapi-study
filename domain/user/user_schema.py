@@ -26,3 +26,8 @@ class UserTokenSchema(BaseModel):
     access_token: str
     token_type: str
     username: str
+
+class UserSchema(BaseModel):
+    id: int
+    username: str
+    email: str
