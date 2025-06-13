@@ -25,3 +25,16 @@ def question_create(db: Session, question: QuestionCreateSchema, user: User):
                         create_date=datetime.now(),
                         user=user)
     db.add(question)
+
+
+@auto_commit
+def update_question(question, question_update, db):
+    question.subject = question_update.subject
+    question.content = question_update.content
+    question.modify_date = datetime.now()
+    db.add(question)
+
+
+@auto_commit
+def delete_question(db: Session, question: Question):
+    db.delete(question)

@@ -29,3 +29,17 @@ class QuestionCreateSchema(BaseModel):
 class QuestionListSchema(BaseModel):
     total: int = 0
     questions: list[QuestionSchema] = []
+
+
+class QuestionIdentifierSchema(BaseModel):
+    question_id: int
+
+    @field_validator('question_id')
+    def positive_id(cls, question_id: int):
+        if not question_id or question_id <= 0:
+            raise ValueError("질문 ID는 양수여야 합니다.")
+        return question_id
+
+
+class QuestionUpdateSchema(QuestionIdentifierSchema, QuestionCreateSchema):
+    pass

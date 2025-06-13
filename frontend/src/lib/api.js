@@ -95,6 +95,10 @@ export const fastapi = (operation, url, params, success_callback, failure_callba
                 _success_callback(undefined, success_callback)
             }
 
+            if (response.status === 204) {
+                _success_callback(undefined, success_callback)
+                return
+            }
 
             response
                 .json()

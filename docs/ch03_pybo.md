@@ -1,3 +1,5 @@
+from domain.answer.answer_schema import AnswerCreateSchemafrom sqlalchemy import DateTime
+
 # 파이보 서비스 개발
 
 이제 wikidocs 에서 제공하는 토이프로젝트인 파이보를 구현하자.
@@ -856,7 +858,7 @@ def get_current_user(token: str = Depends(oauth2_scheme),
 def question_create(_question: QuestionCreateSchema,
                     db: Session = Depends(get_db),
                     user: User = Depends(get_current_user)):
-    question_crud.question_create(db=db, question=_question, user=user)
+  question_crud.question_create(db=db, question=_question, current_user=user)
 ```
 
 - domain/question/question_crud.py
@@ -943,9 +945,9 @@ Authorization 헤더에 Bearer 토큰이 포함되어 있는 것을 확인할 �
  www-authenticate: Bearer 
 ```
 
-www-authenticate 헤더에 Bearer 가 포함되어있어야 한다고 명시하고 있다. 
+www-authenticate 헤더에 Bearer 가 포함되어있어야 한다고 명시하고 있다.
 
-### 질문/답변 프론트엔드 수정 
+### 질문/답변 프론트엔드 수정
 
 이제 질문과 답변에 대한 처리를 하기 위해 프론트엔드 코드를 수정하겠다. 먼저 인증 실패에 대하나 처리를 위해 fastapi 함수 먼저 수정해보겠다.
 
@@ -981,47 +983,49 @@ function unauthorized_callback() {
 
 ```javascript
 function default_options(method, params, content_type = 'application/json') {
-    ... 
-  
+...
+
     const _access_token = get(access_token);
     if (_access_token) {
         options.headers['Authorization'] = `Bearer ${_access_token}`;
     }
 
-    ...
+...
 }
 ```
 
 위 default_options 에서 토큰이 있는 경우에 `Authorization` 헤더를 추가하도록 했다. 이제 API 요청시 토큰이 있는 경우에만 헤더에 토큰을 포함하게 된다.
 
-다음으로 인증 실패에 대한 callback 처리를 추가하자 
+다음으로 인증 실패에 대한 callback 처리를 추가하자
 
 - frontend/src/lib/api.js
 
 ```javascript
 export const fastapi = (operation, url, params, success_callback, failure_callback) => {
     response
-                .json()
-                .then((json) => {
-                    if (_is_authentication_error(method, response.status)) { // 인증 오류 체크 추가
-                        _failure_callback(json, unauthorized_callback)  // 인증 오류 콜백
-                    } else if (_is_error(response)) {
-                        _failure_callback(json, failure_callback);
-                    } else {
-                        _success_callback(json, success_callback);
-                    }
-                })
-                .catch((error) => {
-                    alert(JSON.stringify(error))
-                })
+        .json()
+        .then((json) => {
+            if (_is_authentication_error(method, response.status)) { // 인증 오류 체크 추가
+                _failure_callback(json, unauthorized_callback)  // 인증 오류 콜백
+            } else if (_is_error(response)) {
+                _failure_callback(json, failure_callback);
+            } else {
+                _success_callback(json, success_callback);
+            }
         })
         .catch((error) => {
-            alert(error);
-        }) 
+            alert(JSON.stringify(error))
+        })
+}
+)
+.
+catch((error) => {
+    alert(error);
+})
 }
 ```
 
-마지막으로 로그아웃 된 경우에는 질문 등록과 답변이 불가능하도록 만들어 보겠다. 
+마지막으로 로그아웃 된 경우에는 질문 등록과 답변이 불가능하도록 만들어 보겠다.
 
 - frontend/src/routes/Question.svelte
 
@@ -1037,7 +1041,7 @@ is_signed 를 가져와서 해당 값 여부에 따라서 활성화/비활성화
 
 ### 질문/답변 작성자 표시
 
-이제 질문과 답변 작성자를 표시해보자. 먼저 응답에 대한 Schema 를 수정하겠다. 
+이제 질문과 답변 작성자를 표시해보자. 먼저 응답에 대한 Schema 를 수정하겠다.
 
 - domain/user/user_schema.py
 
@@ -1062,6 +1066,7 @@ class QuestionSchema(BaseModel):
     user: UserSchema | None
 
 ```
+
 - domain/answer/answer_schema.py
 
 ```python
@@ -1072,45 +1077,45 @@ class AnswerSchema(BaseModel):
     user: UserSchema | None
 ```
 
-이제 화면에 글쓴이에 대한 정보를 표시하도록 하자 
+이제 화면에 글쓴이에 대한 정보를 표시하도록 하자
 
 - frontend/src/routes/Question.svelte
 
 ```sveltehtml
     ...
 
-    <table class="table">
-        <thead>
-        <tr class="text-center table-dark">
-            <th>번호</th>
-            <!-- th style 적용 -->
-            <th style="width: 50%">제목</th>
+<table class="table">
+    <thead>
+    <tr class="text-center table-dark">
+        <th>번호</th>
+        <!-- th style 적용 -->
+        <th style="width: 50%">제목</th>
+        <!-- 글쓴이 추가 -->
+        <th>글쓴이</th>
+        <th>작성일시</th>
+    </tr>
+    </thead>
+    <tbody>
+    {#each question_list as question, i}
+        <!-- tr 클래스에 text-center 추가 -->
+        <tr class="text-center">
+            <td>{ total - ($page * size) - i }</td>
+            <!-- td class="text-start" 추가 -->
+            <td class="text-start">
+                <a use:link href="/question/{question.id}">{question.subject}</a>
+                {#if question.answers.length > 0 }
+                    <span class="text-danger small mx-2">{question.answers.length}</span>
+                {/if}
+            </td>
             <!-- 글쓴이 추가 -->
-            <th>글쓴이</th>
-            <th>작성일시</th>
+            <td>{question.user ? question.user.username : ""}</td>
+            <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td>
         </tr>
-        </thead>
-        <tbody>
-        {#each question_list as question, i}
-            <!-- tr 클래스에 text-center 추가 -->
-            <tr class="text-center">
-                <td>{ total - ($page * size) - i }</td>
-                <!-- td class="text-start" 추가 -->
-                <td class="text-start">
-                    <a use:link href="/question/{question.id}">{question.subject}</a>
-                    {#if question.answers.length > 0 }
-                        <span class="text-danger small mx-2">{question.answers.length}</span>
-                    {/if}
-                </td>
-                <!-- 글쓴이 추가 -->
-                <td>{question.user ? question.user.username : ""}</td> 
-                <td>{moment(question.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</td>
-            </tr>
-        {/each}
-        </tbody>
-    </table>
+    {/each}
+    </tbody>
+</table>
 
-    ...
+...
 ```
 
 주석 부분을 참고하여 코드를 추가하면 된다 다음은 상세 화면에서 글쓴이를 표시하겠다.
@@ -1120,60 +1125,339 @@ class AnswerSchema(BaseModel):
 ```sveltehtml
     ...
 
-    <h2 class="border-bottom py-2">{question_detail.subject}</h2>
-    <div class="card my-3">
-        <div class="card-body">
-            <div class="card-text" style="white-space: pre-line;">{question_detail.content}</div>
-            <div class="d-flex justify-content-end">
-                <!-- 글쓴이 추가 시작 -->
-                <div class="badge bg-light text-dark p-2 text-start">
-                    <div class="mb-2">{ question_detail.user ? question_detail.user.username : ""}</div>
-                    <div>{moment(question_detail.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
-                </div>
-                <!-- 글쓴이 추가 종료 -->
+<h2 class="border-bottom py-2">{question_detail.subject}</h2>
+<div class="card my-3">
+    <div class="card-body">
+        <div class="card-text" style="white-space: pre-line;">{question_detail.content}</div>
+        <div class="d-flex justify-content-end">
+            <!-- 글쓴이 추가 시작 -->
+            <div class="badge bg-light text-dark p-2 text-start">
+                <div class="mb-2">{ question_detail.user ? question_detail.user.username : ""}</div>
+                <div>{moment(question_detail.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
             </div>
+            <!-- 글쓴이 추가 종료 -->
         </div>
     </div>
+</div>
 
-    <Error error={error}/>
-    <form method="post" class="my-3">
-        <div class="mb-3">
+<Error error={error}/>
+<form method="post" class="my-3">
+    <div class="mb-3">
             <textarea rows="10"
                       bind:value={content}
                       class="form-control"
                       disabled={$is_signed ? '' : 'disabled'}
             ></textarea>
-        </div>
-        <input type="submit" value="답변 등록" class="btn btn-primary {$is_signed ? '' : 'disabled'}"
-               on:click={post_answer}/>
-    </form>
-    <button class="btn btn-secondary" on:click="{() => {
+    </div>
+    <input type="submit" value="답변 등록" class="btn btn-primary {$is_signed ? '' : 'disabled'}"
+           on:click={post_answer}/>
+</form>
+<button class="btn btn-secondary" on:click="{() => {
         push('/question')
-    }}">목록으로</button>
-    <h5 class="border-bottom my-3 py-2">{question_detail.answers.length}개의 답변이 있습니다.</h5>
-    {#each question_detail.answers as answer}
-        <div class="card my-3">
-            <div class="card-body">
-                <div class="card-text" style="white-space: pre-line;">{answer.content}</div>
-                <div class="d-flex justify-content-end">
-                    <!-- 글쓴이 추가 시작-->
-                    <div class="badge bg-light text-dark p-2 text-start">
-                        <div class="mb-2">{ answer.user ? answer.user.username : ""}</div>
-                        <div>{moment(answer.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
-                    </div>
-                    <!-- 글쓴이 추가 종료-->
+    }}">목록으로
+</button>
+<h5 class="border-bottom my-3 py-2">{question_detail.answers.length}개의 답변이 있습니다.</h5>
+{#each question_detail.answers as answer}
+    <div class="card my-3">
+        <div class="card-body">
+            <div class="card-text" style="white-space: pre-line;">{answer.content}</div>
+            <div class="d-flex justify-content-end">
+                <!-- 글쓴이 추가 시작-->
+                <div class="badge bg-light text-dark p-2 text-start">
+                    <div class="mb-2">{ answer.user ? answer.user.username : ""}</div>
+                    <div>{moment(answer.create_date).format("YYYY년 MM월 DD일 hh:mm a")}</div>
                 </div>
+                <!-- 글쓴이 추가 종료-->
             </div>
         </div>
-    {/each}
+    </div>
+{/each}
 
 
-    ...
+...
 
 ```
 
 주석 부분을 참고하여 코드를 추가하면 된다. 이제 질문과 답변 작성자를 표시할 수 있다.
 
-### 개시물 수정과 삭제 
+### 개시물 수정과 삭제
+
+등록/조회에 대해 처리했으니 수정/삭제에 대해 구현해보도록 하겠다. 먼저 수정사항이 발생하게 되면 수정한 날짜가 필요할 것이다. 이것을 위해 Question, Answer 모델에 수정날짜를 추가하겠다.
+
+- models.py
+
+```python
+class Question(Base):
+    ...
+
+    modify_date = Column(DateTime, nullable=True)
+
+    def is_owner(self, user_id: int) -> bool:
+        """질문 작성자 여부 확인"""
+        return self.user_id == user_id
 
 
+class Answer(Base):
+    ...
+
+    modify_date = Column(DateTime, nullable=True)
+
+    def is_owner(self, user_id: int) -> bool:
+        """답변 작성자 여부 확인"""
+        return self.user_id == user_id
+```
+
+이제 리비전 파일을 생성하고 적용하자
+
+```shell
+alembic revision --autogenerate
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.ddl.postgresql] Detected sequence named 'user_id_seq' as owned by integer column 'user(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'question_id_seq' as owned by integer column 'question(id)', assuming SERIAL and omitting
+INFO  [alembic.ddl.postgresql] Detected sequence named 'answer_id_seq' as owned by integer column 'answer(id)', assuming SERIAL and omitting
+INFO  [alembic.autogenerate.compare] Detected added column 'answer.modify_date'
+INFO  [alembic.autogenerate.compare] Detected added column 'question.modify_date'
+  Generating /Users/geontae/PycharmProjects/FastAPIProject/example/migrations/versions/2b6ff85702a7_.py ...  done
+
+alembic upgrade head
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 4347f84829f1 -> 2b6ff85702a7, empty message
+```
+
+이제 Question, Answer 에서 수정가능한 데이터를 전달받아 처리하기 위한 Schema 를 정의하겠다.
+
+- domain/question/question_schema.py
+
+```python
+class QuestionUpdateSchema(QuestionCreateSchema):
+    question_id: int
+
+    @field_validator('question_id')
+    def positive_id(cls, question_id: int):
+        if not question_id or question_id <= 0:
+            raise ValueError("질문 ID는 양수여야 합니다.")
+        return question_id
+```
+
+- domain/answer/answer_schema.py
+
+```python
+class AnswerUpdateSchema(AnswerCreateSchema):
+    answer_id: int
+
+    @field_validator('answer_id')
+    def positive_id(cls, answer_id: int):
+        if not answer_id or answer_id <= 0:
+            raise ValueError("답변 ID는 양수여야 합니다.")
+
+        return answer_id
+```
+
+데이터를 수정하기 위해서는 식별자가 필요하다. 따라서 질문과 답변에 대한 식별자를 전달 받아 해당 식별자로 데이터를 조회해서 수정할 수 있도록 한다. 이때 식별자는 필수로 전달받아야 하며 양수이어야 하기 때문에
+validator 를 이용해 검증을 하였다.
+
+이제 질문과 답변을 수정하기 위한 API 를 작성하겠다. 각각의 API 명세는 아래와 같다.
+
+| 구분    | Method | URL                              | 설명        |
+|-------|--------|----------------------------------|-----------|
+| 질문 수정 | PUT    | /api/question/update             | 질문 수정 API |
+| 답변 수정 | PUT    | /api/answer/update/{question_id} | 답변 수정 API |
+
+스키마는 `QuestionUpdateSchema`, `AnswerUpdateSchema` 를 사용한다. 이제 API 를 작성하겠다.
+
+- domain/question/question_router.py
+
+```python
+@router.put("/update", status_code=status.HTTP_200_OK)
+def question_update(_question_update: QuestionUpdateSchema,
+                    db: Session = Depends(get_db),
+                    user: User = Depends(get_current_user)):
+    question = question_crud.question_detail(question_id=_question_update.question_id, db=db)
+
+    if not question:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="질문을 찾을 수 없습니다.")
+
+    if not question.is_owner(user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="권한이 없습니다. 질문 작성자만 수정할 수 있습니다.")
+
+    question_crud.update_question(question=question, question_update=_question_update, db=db)
+```
+
+여기서 주의할 점은 질문에 대한 수정은 수정한 사람 본인만 가능하다는 것이다. 따라서 본인의 여부를 확인하기 위해 Question 모델에 `is_owner` 메소드를 추가해서 사용자 ID와 비교하여 본인인지
+확인하도록 하였다.
+
+- 이 부분은 이후에 리팩토링 조금 해보겠다.
+
+이제 질문에 대해 수정하는 crud 함수를 작성하겠다. 위 코드에서는 미리 update_question 함수를 호출하고 있다. 다라서 question_crud.py 에 아래와 같이 함수를 작성하겠다.
+
+- domain/question/question_crud.py
+
+```python
+@auto_commit
+def update_question(db: Session, question: Question, question_update: QuestionUpdateSchema):
+    question.subject = question_update.subject
+    question.content = question_update.content
+    question.modify_date = datetime.now()  # 수정일시 추가
+    db.add(question)
+```
+
+이제 답변에 대해서도 동일하게 처리하겠다.
+
+- domain/answer/answer_router.py
+
+```python
+@router.put("/update", status_code=status.HTTP_200_OK)
+def update_answer(answer_update: AnswerUpdateSchema,
+                  db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
+    answer = answer_crud.get_answer_by_id(db, answer_update.answer_id)
+    if not answer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="답변을 찾을 수 없습니다.")
+
+    if not answer.is_owner(current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="권한이 없습니다. 답변 작성자만 수정할 수 있습니다.")
+
+    answer_crud.update_answer(db=db, answer=answer, answer_update=answer_update)
+```
+
+답변에 대해서도 동일하게 처리하되, 답변 작성자 여부를 확인하기 위해 Answer 모델에 `is_owner` 메소드를 추가하여 사용자 ID와 비교하여 본인인지 확인하도록 하였다.
+
+이제 답변에 대한 수정 crud 함수를 작성하겠다. 위 코드에서는 미리 update_answer 함수를 호출하고 있다. 따라서 answer_crud.py 에 아래와 같이 함수를 작성하겠다.
+
+- domain/answer/answer_crud.py
+
+```python
+@auto_commit
+def update_answer(db: Session, answer: Answer, answer_update: AnswerUpdateSchema):
+    answer.content = answer_update.content
+    answer.modify_date = datetime.now()
+    db.add(answer)
+```
+
+이제 FastAPI Swagger UI 를 통해서 API 테스트를 해보고 결과를 확인하자. 정상적으로 동작한다. 
+
+이제 삭제에 대한 API 를 작성하겠다. 삭제는 question_id 또는 answer_id 를 통해서 삭제할 수 있도록 하겠다. API 명세는 아래와 같다.
+
+| 구분    | Method | URL                               | 설명        |
+|-------|--------|-----------------------------------|-----------|
+| 질문 삭제 | DELETE | /api/question/delete              | 질문 삭제 API |
+| 답변 삭제 | DELETE | /api/answer/delete                | 답변 삭제 API |
+
+스키마는 `QuestionIdentifierSchema`, `AnswerIdentifierSchema` 를 사용한다. 이 스키마는 식별자만 포함된 스키마로 아래와 같이 정의한다. (리팩토링도 함께 진행한다)
+- domain/question/question_schema.py
+
+```python
+class QuestionIdentifierSchema(BaseModel):
+    question_id: int
+
+    @field_validator('question_id')
+    def positive_id(cls, question_id: int):
+        if not question_id or question_id <= 0:
+            raise ValueError("질문 ID는 양수여야 합니다.")
+        return question_id
+
+class QuestionUpdateSchema(QuestionIdentifierSchema, QuestionCreateSchema):
+    pass
+```
+
+- domain/answer/answer_schema.py
+
+```python
+class AnswerIdentifierSchema(BaseModel):
+    answer_id: int
+
+    @field_validator('answer_id')
+    def positive_id(cls, answer_id: int):
+        if not answer_id or answer_id <= 0:
+            raise ValueError("답변 ID는 양수여야 합니다.")
+        return answer_id
+
+class AnswerUpdateSchema(AnswerIdentifierSchema, AnswerCreateSchema):
+    pass 
+```
+
+이제 API와 curd 함수를 작성하겠다.
+
+- domain/question/question_router.py
+
+```python
+@router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
+def question_delete(question_id: QuestionIdentifierSchema,
+                    db: Session = Depends(get_db),
+                    current_user: User = Depends(get_current_user)):
+    question = question_crud.question_detail(question_id=question_id.question_id, db=db)
+    if not question:
+        return
+
+    if not question.is_owner(current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="권한이 없습니다. 질문 작성자만 삭제할 수 있습니다.")
+
+    question_crud.delete_question(question=question, db=db)
+```
+
+- domain/question/question_crud.py
+
+```python
+@auto_commit
+def delete_question(db: Session, question: Question):
+    db.delete(question)
+```
+
+이제 답변에 대해서도 동일하게 처리하겠다.
+
+- domain/answer/answer_router.py
+
+```python
+@router.delete("/delete", status_code=status.HTTP_204_NO_CONTENT)
+def delete_answer(answer_id: int,
+                  db: Session = Depends(get_db),
+                  current_user: User = Depends(get_current_user)):
+    answer = answer_crud.get_answer_by_id(db, answer_id)
+    if not answer:
+        return
+
+    if not answer.is_owner(current_user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="권한이 없습니다. 답변 작성자만 삭제할 수 있습니다.")
+
+    answer_crud.delete_answer(db=db, answer=answer)
+```
+
+- domain/answer/answer_crud.py
+
+```python
+@auto_commit
+def delete_answer(db: Session, answer: Answer):
+    db.delete(answer)
+```
+
+정상 독작하는것까지 확인하자. 
+
+이제 화면에서 수정과 삭제를 처리할 수 있도록 하겠다. 먼저 질문 목록에서 수정과 삭제를 처리할 수 있도록 하겠다.
+
+> UI는 따로 정리하지 않았으며 아래 링크를 참고해서 작성하면 된다.
+> - [질문과 답변 수정 및 삭제](https://wikidocs.net/177112#_5)
+>
+
+삭제 API 를 호출하면 최종적으로는 데이터가 없기 때문에 204 No Content 를 호출한다. 이때 fastapi 에서 204 를 처리할 수 없어 해당부분에 대한 방어로직을 추가해 주자. 
+
+- frontend/src/lib/api.js
+
+```javascript
+export const fastapi = (operation, url, params, success_callback, failure_callback) => {
+
+    fetch(_url, options)
+        .then((response) => {
+            ...
+
+            // 204 No Content 응답 처리 추가 
+            if (response.status === 204) {
+                _success_callback(undefined, success_callback)
+                return
+            }
+            
+            ...
+}
+
+```
